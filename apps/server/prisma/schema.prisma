@@ -1,0 +1,97 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "sqlite"
+}
+
+model User {
+  id              String            @id @default(uuid())
+  email           String            @unique
+  timezone        String            @default("UTC")
+  createdAt       DateTime          @default(now())
+  updatedAt       DateTime          @updatedAt
+  weightLogs      WeightLog[]
+  meals           Meal[]
+  dailySummaries  DailySummary[]
+  weeklySummaries WeeklySummary[]
+  monthlySummaries MonthlySummary[]
+}
+
+model WeightLog {
+  id        String   @id @default(uuid())
+  userId    String
+  user      User     @relation(fields: [userId], references: [id])
+  weight    Float
+  date      DateTime
+  createdAt DateTime @default(now())
+}
+
+model Meal {
+  id             String          @id @default(uuid())
+  userId         String
+  user           User            @relation(fields: [userId], references: [id])
+  imageUrl       String?
+  recognizedText String?
+  calories       Int
+  protein        Float?
+  carbs          Float?
+  fat            Float?
+  loggedAt       DateTime
+  createdAt      DateTime        @default(now())
+  recognitionJob RecognitionJob?
+}
+
+model DailySummary {
+  id            String   @id @default(uuid())
+  userId        String
+  user          User     @relation(fields: [userId], references: [id])
+  date          DateTime
+  totalCalories Int      @default(0)
+  totalProtein  Float    @default(0)
+  totalCarbs    Float    @default(0)
+  totalFat      Float    @default(0)
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+
+  @@unique([userId, date])
+}
+
+model WeeklySummary {
+  id            String   @id @default(uuid())
+  userId        String
+  user          User     @relation(fields: [userId], references: [id])
+  startDate     DateTime
+  endDate       DateTime
+  totalCalories Int      @default(0)
+  avgWeight     Float?
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+
+  @@unique([userId, startDate])
+}
+
+model MonthlySummary {
+  id            String   @id @default(uuid())
+  userId        String
+  user          User     @relation(fields: [userId], references: [id])
+  month         Int
+  year          Int
+  totalCalories Int      @default(0)
+  avgWeight     Float?
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+
+  @@unique([userId, month, year])
+}
+
+model RecognitionJob {
+  id        String   @id @default(uuid())
+  mealId    String   @unique
+  meal      Meal     @relation(fields: [mealId], references: [id])
+  status    String   @default("PENDING") // PENDING, COMPLETED, FAILED
+  result    String?
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+}

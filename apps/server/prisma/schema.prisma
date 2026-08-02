@@ -52,6 +52,7 @@ model DailySummary {
   totalProtein  Float    @default(0)
   totalCarbs    Float    @default(0)
   totalFat      Float    @default(0)
+  comment       String?
   createdAt     DateTime @default(now())
   updatedAt     DateTime @updatedAt
 

@@ -13,4 +13,4 @@ Implement the `POST /api/chat` endpoint for the AI Nutritionist.
 - Ensure prompts clearly state the user is asking about the selected period.
 
 ## 4. Verification & Testing
-- [ ] E2E Test: Send a chat message with period=Day and ensure daily meals are included in the prompt construction.
+- [x] E2E Test: Send a chat message with period=Day and ensure daily meals are included in the prompt construction.

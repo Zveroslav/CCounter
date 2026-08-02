@@ -66,3 +66,75 @@ export const recognizeMealFromImage = async (imagePath: string): Promise<MealRec
     throw new Error('Meal recognition failed');
   }
 };
+
+export const getDailyFeedback = async (calories: number, protein: number, carbs: number, fat: number): Promise<string> => {
+  const promptTemplate = process.env.AI_DAILY_PROMPT;
+  if (!promptTemplate) {
+    return 'Daily summary recorded.';
+  }
+
+  const prompt = promptTemplate
+    .replace('{{CALORIES}}', calories.toString())
+    .replace('{{PROTEIN}}', protein.toString())
+    .replace('{{CARBS}}', carbs.toString())
+    .replace('{{FAT}}', fat.toString());
+
+  const command = `/Users/yaroslavkravets/.local/bin/agy ask '${prompt}' --format json --dangerously-skip-permissions`;
+
+  try {
+    const result_exec: any = await new Promise((resolve, reject) => {
+      cp.exec(command, (err, stdout, stderr) => {
+        if (err) return reject(err);
+        resolve({ stdout, stderr });
+      });
+    });
+
+    let jsonString = typeof result_exec === 'string' ? result_exec : (result_exec as any).stdout.trim();
+
+    try {
+      const agyParsed = JSON.parse(jsonString);
+      if (agyParsed && agyParsed.response) {
+        return agyParsed.response;
+      }
+    } catch (e) {
+      // Ignored
+    }
+
+    return jsonString;
+  } catch (error) {
+    console.error('Failed to get daily feedback:', error);
+    return 'Could not generate feedback at this time.';
+  }
+};
+
+export const chatWithNutritionist = async (prompt: string): Promise<string> => {
+  // Escape single quotes by replacing ' with '\''
+  const escapedPrompt = prompt.replace(/'/g, "'\\''");
+  const command = `/Users/yaroslavkravets/.local/bin/agy ask '${escapedPrompt}' --format json --dangerously-skip-permissions`;
+
+  try {
+    console.log('Executing chat command with agy CLI...');
+    const result_exec: any = await new Promise((resolve, reject) => {
+      cp.exec(command, (err, stdout, stderr) => {
+        if (err) return reject(err);
+        resolve({ stdout, stderr });
+      });
+    });
+
+    let jsonString = typeof result_exec === 'string' ? result_exec : (result_exec as any).stdout.trim();
+
+    try {
+      const agyParsed = JSON.parse(jsonString);
+      if (agyParsed && agyParsed.response) {
+        return agyParsed.response;
+      }
+    } catch (e) {
+      // Ignored
+    }
+
+    return jsonString;
+  } catch (error) {
+    console.error('Failed to execute chat with nutritionist:', error);
+    throw new Error('Nutritionist is currently unavailable.');
+  }
+};

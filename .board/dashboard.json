@@ -1,8 +1,8 @@
 {
   "tickets": {
     "nextId": 9,
-    "todo": 6,
-    "done": 2
+    "todo": 5,
+    "done": 3
   },
   "stories": {
     "todo": 1,

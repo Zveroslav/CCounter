@@ -8,7 +8,7 @@ Initialize the React Vite frontend, setup Tailwind CSS, and configure the PWA sh
 - Configure Web App Manifest and Service Worker (PWA setup), but without offline data caching.
 - Optimize for iOS Safari: disable pull-to-refresh on forms, handle safe-areas.
 - Create basic layout: Bottom navigation, large floating capture button.
-- Implement dummy JWT injection for API calls (to be configured in Profile).
+- Implement JWT injection for API calls (to be configured in Profile).
 
 ## 3. Technical Implementation Details
 - Files to modify: `vite.config.ts`, `public/manifest.json`, `src/App.tsx`, `src/index.css`.

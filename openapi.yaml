@@ -120,6 +120,45 @@ paths:
               schema:
                 $ref: '#/components/schemas/ErrorResponse'
 
+  /meals/{id}:
+    put:
+      summary: Update a meal's macros or notes
+      description: Update the meal details (like manual corrections after AI recognition).
+      parameters:
+        - in: path
+          name: id
+          schema:
+            type: string
+            format: uuid
+          required: true
+          description: The Meal ID to update
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                calories:
+                  type: integer
+                protein:
+                  type: number
+                fat:
+                  type: number
+                carbs:
+                  type: number
+                recognizedText:
+                  type: string
+      responses:
+        '200':
+          description: Meal updated successfully
+        '400':
+          description: Bad Request
+        '403':
+          description: Forbidden
+        '404':
+          description: Meal not found
+
   /chat:
     post:
       summary: Chat with the AI Nutritionist

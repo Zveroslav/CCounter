@@ -1,20 +1,38 @@
-import { Outlet, Link, useLocation } from 'react-router-dom';
-import { Home, User, Camera } from 'lucide-react';
-import { useRef } from 'react';
+import { Outlet, Link, useLocation, useNavigate } from 'react-router-dom';
+import { Home, User, Camera, Loader2 } from 'lucide-react';
+import { useRef, useState } from 'react';
+import { recognizeMeal } from '../api/meals';
 
 export default function MainLayout() {
   const location = useLocation();
+  const navigate = useNavigate();
   const fileInputRef = useRef<HTMLInputElement>(null);
+  const [isUploading, setIsUploading] = useState(false);
 
   const handleCaptureClick = () => {
-    fileInputRef.current?.click();
+    if (!isUploading) {
+      fileInputRef.current?.click();
+    }
   };
 
-  const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+  const handleFileChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
-    if (file) {
-      // TODO: Handle file upload and redirect to refinement screen
-      console.log('File captured:', file);
+    if (!file) return;
+
+    try {
+      setIsUploading(true);
+      const res = await recognizeMeal(file);
+      // Navigate to refinement view
+      navigate(`/refinement/${res.jobId}`);
+    } catch (err) {
+      console.error('Failed to upload image:', err);
+      alert('Failed to upload image. Please try again.');
+    } finally {
+      setIsUploading(false);
+      // Reset input so the same file can be selected again
+      if (fileInputRef.current) {
+        fileInputRef.current.value = '';
+      }
     }
   };
 
@@ -39,9 +57,10 @@ export default function MainLayout() {
         <div className="relative -top-6">
           <button 
             onClick={handleCaptureClick}
-            className="bg-indigo-600 text-white rounded-full p-4 shadow-lg active:scale-95 transition-transform hover:bg-indigo-700 ring-4 ring-white"
+            disabled={isUploading}
+            className="bg-indigo-600 text-white rounded-full p-4 shadow-lg active:scale-95 transition-transform hover:bg-indigo-700 ring-4 ring-white disabled:opacity-75 disabled:active:scale-100"
           >
-            <Camera size={32} />
+            {isUploading ? <Loader2 size={32} className="animate-spin" /> : <Camera size={32} />}
           </button>
           
           {/* Hidden File Input for Camera */}

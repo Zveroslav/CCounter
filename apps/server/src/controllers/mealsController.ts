@@ -108,7 +108,45 @@ export const getJobStatus = async (req: AuthRequest, res: Response, next: NextFu
       jobId: job.id,
       status: job.status,
       result: job.result ? JSON.parse(job.result) : null,
+      mealId: job.mealId, // include mealId to let frontend know which meal this belongs to
     });
+  } catch (error) {
+    next(error);
+  }
+};
+
+export const updateMeal = async (req: AuthRequest, res: Response, next: NextFunction) => {
+  try {
+    const id = req.params.id as string;
+    const userId = req.user?.id;
+    
+    if (!userId) {
+      return next(new AppError('Unauthorized', 401));
+    }
+
+    const { calories, protein, fat, carbs, recognizedText } = req.body;
+
+    const meal = await prisma.meal.findUnique({ where: { id } });
+    if (!meal) {
+      return next(new AppError('Meal not found', 404));
+    }
+
+    if (meal.userId !== userId) {
+      return next(new AppError('Forbidden', 403));
+    }
+
+    const updatedMeal = await prisma.meal.update({
+      where: { id },
+      data: {
+        calories: calories !== undefined ? Number(calories) : meal.calories,
+        protein: protein !== undefined ? Number(protein) : meal.protein,
+        fat: fat !== undefined ? Number(fat) : meal.fat,
+        carbs: carbs !== undefined ? Number(carbs) : meal.carbs,
+        recognizedText: recognizedText !== undefined ? String(recognizedText) : meal.recognizedText,
+      }
+    });
+
+    res.json({ message: 'Meal updated successfully', meal: updatedMeal });
   } catch (error) {
     next(error);
   }

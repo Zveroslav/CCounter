@@ -1,0 +1,163 @@
+openapi: 3.0.0
+info:
+  title: AI Calorie Counter API
+  version: 1.0.0
+  description: Public API methods for the CCounter Backend
+
+servers:
+  - url: http://localhost:3000/api
+    description: Local development server
+
+components:
+  securitySchemes:
+    bearerAuth:
+      type: http
+      scheme: bearer
+      bearerFormat: JWT
+  
+  schemas:
+    ErrorResponse:
+      type: object
+      properties:
+        error:
+          type: string
+          
+    JobResponse:
+      type: object
+      properties:
+        jobId:
+          type: string
+          format: uuid
+
+    JobStatusResponse:
+      type: object
+      properties:
+        jobId:
+          type: string
+          format: uuid
+        status:
+          type: string
+          enum: [PENDING, COMPLETED, FAILED]
+        result:
+          type: object
+          nullable: true
+          properties:
+            id:
+              type: string
+              format: uuid
+            calories:
+              type: integer
+            protein:
+              type: integer
+            fat:
+              type: integer
+            carbs:
+              type: integer
+            healthWarnings:
+              type: string
+              nullable: true
+        error:
+          type: string
+          nullable: true
+
+security:
+  - bearerAuth: []
+
+paths:
+  /meals/recognize:
+    post:
+      summary: Upload a food photo to recognize and log a meal
+      description: Returns a jobId to poll for the result. Processed via background job using Gemini Vision.
+      requestBody:
+        required: true
+        content:
+          multipart/form-data:
+            schema:
+              type: object
+              properties:
+                image:
+                  type: string
+                  format: binary
+                  description: The image file of the food
+      responses:
+        '202':
+          description: Job created successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/JobResponse'
+        '400':
+          description: Bad Request
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '401':
+          description: Unauthorized
+          
+  /meals/jobs/{id}:
+    get:
+      summary: Get the status and result of a meal recognition job
+      parameters:
+        - in: path
+          name: id
+          schema:
+            type: string
+            format: uuid
+          required: true
+          description: The Job ID returned from /meals/recognize
+      responses:
+        '200':
+          description: Job status and details
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/JobStatusResponse'
+        '404':
+          description: Job not found
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+
+  /chat:
+    post:
+      summary: Chat with the AI Nutritionist
+      description: Get AI feedback on your meals for a specific period and date.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required:
+                - message
+                - period
+              properties:
+                message:
+                  type: string
+                  description: The user's question to the AI nutritionist.
+                period:
+                  type: string
+                  enum: [Day, Week, Month, All-Time]
+                  description: The context period to pull aggregated data for.
+                targetDate:
+                  type: string
+                  format: date-time
+                  description: The ISO date representing the specific period to fetch. Defaults to today.
+      responses:
+        '200':
+          description: AI response
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  response:
+                    type: string
+        '400':
+          description: Bad Request
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'

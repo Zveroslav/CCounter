@@ -9,3 +9,7 @@ coverage/
 apps/server/uploads/
 *.log
 .gemini/
+*.db
+*.sqlite
+t.png
+

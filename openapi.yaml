@@ -60,10 +60,124 @@ components:
           type: string
           nullable: true
 
+    UserProfileResponse:
+      type: object
+      properties:
+        id:
+          type: string
+        email:
+          type: string
+        name:
+          type: string
+          nullable: true
+        timezone:
+          type: string
+        targetCalories:
+          type: integer
+        targetProtein:
+          type: number
+        targetFat:
+          type: number
+        targetCarbs:
+          type: number
+        latestWeight:
+          type: number
+          nullable: true
+
 security:
   - bearerAuth: []
 
 paths:
+  /user/profile:
+    get:
+      summary: Get user profile and goals
+      responses:
+        '200':
+          description: User Profile
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/UserProfileResponse'
+    put:
+      summary: Update user profile and goals
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                name:
+                  type: string
+                timezone:
+                  type: string
+                targetCalories:
+                  type: integer
+                targetProtein:
+                  type: number
+                targetFat:
+                  type: number
+                targetCarbs:
+                  type: number
+      responses:
+        '200':
+          description: Profile updated
+
+  /user/weight:
+    post:
+      summary: Log a new weight entry
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                weight:
+                  type: number
+      responses:
+        '200':
+          description: Weight logged
+
+  /journal:
+    get:
+      summary: Get meals and summaries for a specific period
+      parameters:
+        - in: query
+          name: period
+          schema:
+            type: string
+            enum: [day, week, month, all-time]
+        - in: query
+          name: date
+          schema:
+            type: string
+            format: date-time
+      responses:
+        '200':
+          description: Journal data
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  period:
+                    type: string
+                  startDate:
+                    type: string
+                    format: date-time
+                  endDate:
+                    type: string
+                    format: date-time
+                  meals:
+                    type: array
+                    items:
+                      type: object
+                  dailySummaries:
+                    type: array
+                    items:
+                      type: object
+
   /meals/recognize:
     post:
       summary: Upload a food photo to recognize and log a meal

@@ -4,6 +4,8 @@ import { errorHandler } from './middleware/error';
 import { authenticate, AuthRequest } from './middleware/auth';
 import mealsRoutes from './routes/meals';
 import chatRoutes from './routes/chat';
+import userRoutes from './routes/user';
+import journalRoutes from './routes/journal';
 import { startCronJobs } from './jobs/aggregator';
 
 const app = express();
@@ -13,6 +15,8 @@ app.use(express.json());
 
 app.use('/api/meals', mealsRoutes);
 app.use('/api/chat', chatRoutes);
+app.use('/api/user', userRoutes);
+app.use('/api/journal', journalRoutes);
 
 app.use(errorHandler);
 

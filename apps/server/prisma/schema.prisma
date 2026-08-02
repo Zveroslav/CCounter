@@ -9,7 +9,12 @@ datasource db {
 model User {
   id              String            @id @default(uuid())
   email           String            @unique
+  name            String?
   timezone        String            @default("UTC")
+  targetCalories  Int               @default(2000)
+  targetProtein   Float             @default(150)
+  targetCarbs     Float             @default(200)
+  targetFat       Float             @default(65)
   createdAt       DateTime          @default(now())
   updatedAt       DateTime          @updatedAt
   weightLogs      WeightLog[]

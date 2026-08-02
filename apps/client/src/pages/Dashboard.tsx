@@ -13,6 +13,7 @@ import {
   ResponsiveContainer,
   ReferenceLine
 } from 'recharts';
+import ChatWidget from '../components/ChatWidget';
 
 type Period = 'day' | 'week' | 'month' | 'all-time';
 
@@ -273,6 +274,11 @@ export default function Dashboard() {
                   </div>
                 ))
               )}
+            </div>
+
+            {/* AI Nutritionist Chat */}
+            <div className="mt-8">
+              <ChatWidget period={period} targetDate={targetDate.toISOString()} />
             </div>
 
           </div>

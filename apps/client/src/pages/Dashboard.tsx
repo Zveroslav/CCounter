@@ -646,7 +646,7 @@ function ChatModal({ period, targetDate, onClose }: { period: string; targetDate
 // Macro Donut Chart
 // ---------------------------------------------------------------------------
 
-function MacroDonut({ protein, fat, carbs }: { protein: number; fat: number; carbs: number }) {
+export function MacroDonut({ protein, fat, carbs }: { protein: number; fat: number; carbs: number }) {
   const total = protein + fat + carbs;
 
   // Donut geometry

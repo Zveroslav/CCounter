@@ -88,13 +88,14 @@ export const getDailyFeedback = async (
   const promptTemplate = process.env.AI_DAILY_PROMPT;
   if (!promptTemplate) return 'Daily summary recorded.';
 
+  const agyBin = process.env.AGY_PATH || 'agy';
   const prompt = promptTemplate
     .replace('{{CALORIES}}', calories.toString())
     .replace('{{PROTEIN}}', protein.toString())
     .replace('{{CARBS}}', carbs.toString())
     .replace('{{FAT}}', fat.toString());
 
-  const command = `/Users/yaroslavkravets/.local/bin/agy ask '${prompt}' --format json --dangerously-skip-permissions`;
+  const command = `${agyBin} --dangerously-skip-permissions --print '${prompt}' --output-format json`;
 
   try {
     console.log('[agy] getDailyFeedback: executing...');
@@ -112,8 +113,9 @@ export const getDailyFeedback = async (
 };
 
 export const chatWithNutritionist = async (prompt: string): Promise<string> => {
+  const agyBin = process.env.AGY_PATH || 'agy';
   const escapedPrompt = prompt.replace(/'/g, "'\\''");
-  const command = `/Users/yaroslavkravets/.local/bin/agy ask '${escapedPrompt}' --format json --dangerously-skip-permissions`;
+  const command = `${agyBin} --dangerously-skip-permissions --print '${escapedPrompt}' --output-format json`;
 
   try {
     console.log('[agy] chatWithNutritionist: executing...');

@@ -14,6 +14,7 @@ export class AppError extends Error {
 
 export const errorHandler = (err: any, req: Request, res: Response, next: NextFunction) => {
   if (err instanceof AppError) {
+    console.warn(`[WARN] ${req.method} ${req.originalUrl} - ${err.statusCode}: ${err.message}`);
     return res.status(err.statusCode).json({
       status: 'error',
       message: err.message,

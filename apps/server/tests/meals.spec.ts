@@ -64,4 +64,37 @@ describe('Meals Routes', () => {
     expect(jobRes!.body.result.calories).toBe(500);
     expect(jobRes!.body.result.health_warnings).toBe('Contains nuts');
   });
+
+  it('should mark job FAILED and clean up temporary meal when recognition fails', async () => {
+    process.env.CLI_COMMAND_TEMPLATE = "invalid_command_nonexistent_xyz 123";
+
+    const dummyImagePath = path.join(__dirname, 'dummy_fail.jpg');
+    fs.writeFileSync(dummyImagePath, 'dummy content');
+
+    const res = await request(app)
+      .post('/api/meals/recognize')
+      .set('Authorization', `Bearer ${validToken}`)
+      .attach('image', dummyImagePath);
+
+    if (fs.existsSync(dummyImagePath)) fs.unlinkSync(dummyImagePath);
+
+    expect(res.status).toBe(202);
+    const createdMealId = res.body.mealId;
+
+    let jobRes;
+    for (let i = 0; i < 5; i++) {
+      await new Promise(r => setTimeout(r, 500));
+      jobRes = await request(app)
+        .get(`/api/meals/jobs/${res.body.jobId}`)
+        .set('Authorization', `Bearer ${validToken}`);
+      if (jobRes.body.status !== 'PENDING') break;
+    }
+
+    expect(jobRes!.status).toBe(200);
+    expect(jobRes!.body.status).toBe('FAILED');
+
+    // Verify the temporary meal was deleted from database
+    const meal = await prisma.meal.findUnique({ where: { id: createdMealId } });
+    expect(meal).toBeNull();
+  });
 });

@@ -1,3 +1,5 @@
+import { fetchWithAuth } from './client';
+
 export interface Meal {
   id: string;
   imageUrl?: string;
@@ -26,25 +28,12 @@ export interface JournalData {
   dailySummaries: DailySummary[];
 }
 
-const getHeaders = () => {
-  const token = localStorage.getItem('jwt_token') || '';
-  return {
-    'Content-Type': 'application/json',
-    'Authorization': `Bearer ${token}`
-  };
-};
-
 export const getJournalData = async (period: 'day' | 'week' | 'month' | 'all-time', date?: string): Promise<JournalData> => {
-  const url = new URL('/api/journal', window.location.origin);
-  url.searchParams.append('period', period);
+  let query = `?period=${encodeURIComponent(period)}`;
   if (date) {
-    url.searchParams.append('date', date);
+    query += `&date=${encodeURIComponent(date)}`;
   }
 
-  const response = await fetch(url.toString(), {
-    headers: getHeaders()
-  });
-  
-  if (!response.ok) throw new Error('Failed to fetch journal data');
-  return response.json();
+  return fetchWithAuth(`/journal${query}`);
 };
+

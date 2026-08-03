@@ -26,10 +26,17 @@ AI-powered calorie tracking application that recognizes meals from photos and ca
    ```
 
 2. Initialize database:
-   ```bash
-   npx prisma generate
-   npx prisma db push
-   ```
+   - For Development:
+     ```bash
+     npx prisma generate
+     npx prisma migrate dev
+     ```
+   - For Production:
+     Before starting the application, run:
+     ```bash
+     npm run db:deploy
+     ```
+     This safely applies all pending migrations from `prisma/migrations` to your production database (`prod.db`) without data loss or forced schema resets.
 
 3. Setup environment variables (`apps/server/.env`):
    ```env
@@ -58,3 +65,28 @@ Check the status of the recognition job:
 ```bash
 curl -X GET http://localhost:3000/api/meals/jobs/<JOB_ID>
 ```
+
+## HTTPS Configuration & PWA Security
+
+HTTPS is required for Progressive Web App (PWA) installation and Service Worker functionality.
+
+### 1. Generating Certificates with Let's Encrypt (Certbot)
+On your production VPS server:
+```bash
+sudo apt update
+sudo apt install certbot
+sudo certbot certonly --standalone -d yourdomain.com
+```
+
+### 2. Configuring Production Environment
+In `apps/server/.env.production`, specify your certificate paths and enable HTTPS enforcement:
+```env
+NODE_ENV=production
+PORT=443
+ENFORCE_HTTPS=true
+SSL_KEY_PATH="/etc/letsencrypt/live/yourdomain.com/privkey.pem"
+SSL_CERT_PATH="/etc/letsencrypt/live/yourdomain.com/fullchain.pem"
+```
+
+If `SSL_KEY_PATH` and `SSL_CERT_PATH` are omitted or files do not exist, the server automatically falls back to HTTP.
+

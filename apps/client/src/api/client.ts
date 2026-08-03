@@ -5,11 +5,11 @@ export async function fetchWithAuth(url: string, options: RequestInit = {}) {
   
   const headers = new Headers(options.headers || {});
   
-  if (token) {
+  if (token && token !== 'undefined' && token !== 'null' && token.trim() !== '') {
     headers.set('Authorization', `Bearer ${token}`);
   }
   
-  if (!(options.body instanceof FormData)) {
+  if (!(options.body instanceof FormData) && !headers.has('Content-Type')) {
     headers.set('Content-Type', 'application/json');
   }
 
@@ -20,8 +20,9 @@ export async function fetchWithAuth(url: string, options: RequestInit = {}) {
 
   if (!response.ok) {
     const errorData = await response.json().catch(() => ({}));
-    throw new Error(errorData.error || `HTTP error! status: ${response.status}`);
+    throw new Error(errorData.message || errorData.error || `HTTP error! status: ${response.status}`);
   }
 
   return response.json();
 }
+

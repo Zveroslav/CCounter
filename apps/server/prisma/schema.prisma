@@ -94,8 +94,8 @@ model MonthlySummary {
 
 model RecognitionJob {
   id        String   @id @default(uuid())
-  mealId    String   @unique
-  meal      Meal     @relation(fields: [mealId], references: [id])
+  mealId    String?  @unique
+  meal      Meal?    @relation(fields: [mealId], references: [id], onDelete: SetNull)
   status    String   @default("PENDING") // PENDING, COMPLETED, FAILED
   result    String?
   createdAt DateTime @default(now())

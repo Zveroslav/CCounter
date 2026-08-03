@@ -75,6 +75,13 @@ export const recognizeMeal = async (req: AuthRequest, res: Response, next: NextF
             status: 'FAILED',
           },
         });
+        if (job.mealId) {
+          try {
+            await prisma.meal.delete({ where: { id: job.mealId } });
+          } catch (deleteErr) {
+            console.error('Failed to delete empty meal on job failure:', deleteErr);
+          }
+        }
       } finally {
         // Clean up the temporary file
         fs.unlink(imagePath, (err) => {

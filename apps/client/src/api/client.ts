@@ -1,7 +1,7 @@
 export const API_BASE = '/api';
 
 export async function fetchWithAuth(url: string, options: RequestInit = {}) {
-  const token = localStorage.getItem('jwt');
+  const token = localStorage.getItem('jwt_token');
   
   const headers = new Headers(options.headers || {});
   

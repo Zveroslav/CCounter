@@ -1,5 +1,5 @@
 import { useState, useRef, useEffect } from 'react';
-import { Send, Loader2, Bot } from 'lucide-react';
+import { Send, Loader2 } from 'lucide-react';
 import { sendChatMessage } from '../api/chat';
 
 interface ChatWidgetProps {
@@ -20,13 +20,14 @@ export default function ChatWidget({ period, targetDate }: ChatWidgetProps) {
   const [input, setInput] = useState('');
   const [isSending, setIsSending] = useState(false);
   const messagesEndRef = useRef<HTMLDivElement>(null);
-
-  const scrollToBottom = () => {
-    messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
-  };
+  const isFirstRender = useRef(true);
 
   useEffect(() => {
-    scrollToBottom();
+    if (isFirstRender.current) {
+      isFirstRender.current = false;
+      return; // don't scroll on mount
+    }
+    messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
   }, [messages]);
 
   const handleSend = async (e: React.FormEvent) => {
@@ -65,16 +66,8 @@ export default function ChatWidget({ period, targetDate }: ChatWidgetProps) {
   };
 
   return (
-    <div className="bg-white rounded-3xl shadow-sm border border-gray-100 flex flex-col h-[400px] overflow-hidden">
+    <div className="bg-white flex flex-col h-full overflow-hidden">
       
-      {/* Header */}
-      <div className="bg-indigo-50 px-4 py-3 border-b border-indigo-100 flex items-center space-x-2">
-        <Bot size={20} className="text-indigo-600" />
-        <h3 className="font-bold text-indigo-900">AI Nutritionist</h3>
-        <span className="text-xs bg-indigo-200 text-indigo-800 px-2 py-0.5 rounded-full capitalize">
-          {period} context
-        </span>
-      </div>
 
       {/* Messages */}
       <div className="flex-1 overflow-y-auto p-4 space-y-4 bg-gray-50/50">
@@ -104,7 +97,7 @@ export default function ChatWidget({ period, targetDate }: ChatWidgetProps) {
       </div>
 
       {/* Input */}
-      <form onSubmit={handleSend} className="p-3 bg-white border-t border-gray-100 flex items-center space-x-2">
+      <form onSubmit={handleSend} className="p-3 pb-safe bg-white border-t border-gray-100 flex items-center space-x-2">
         <input 
           type="text" 
           value={input}

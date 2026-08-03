@@ -6,6 +6,18 @@ import { prisma } from '../prisma';
 import * as gemini from '../services/gemini';
 import { AuthRequest } from '../middleware/auth';
 
+enum Period {
+  Day     = 'day',
+  Week    = 'week',
+  Month   = 'month',
+  AllTime = 'all-time',
+}
+
+function parsePeriod(value: string): Period | null {
+  const normalized = value.toLowerCase() as Period;
+  return Object.values(Period).includes(normalized) ? normalized : null;
+}
+
 dayjs.extend(utc);
 dayjs.extend(timezone);
 
@@ -28,10 +40,17 @@ export const handleChat = async (req: AuthRequest, res: Response): Promise<void>
     // Determine the reference date. Defaults to now if targetDate not provided.
     const userTimezone = user.timezone || 'UTC';
     const refDate = targetDate ? dayjs(targetDate).tz(userTimezone) : dayjs().tz(userTimezone);
-    
+
+    // Normalize & validate period (case-insensitive via shared enum)
+    const normalizedPeriod = parsePeriod(String(period));
+    if (!normalizedPeriod) {
+      res.status(400).json({ error: `Invalid period "${period}". Must be one of: ${Object.values(Period).join(', ')}.` });
+      return;
+    }
+
     let contextData = '';
 
-    if (period === 'Day') {
+    if (normalizedPeriod === Period.Day) {
       const startOfDay = refDate.startOf('day').toDate();
       const endOfDay = refDate.endOf('day').toDate();
 
@@ -58,6 +77,10 @@ export const handleChat = async (req: AuthRequest, res: Response): Promise<void>
       const totalCarbs = meals.reduce((sum, meal) => sum + (meal.carbs || 0), 0);
       const totalFat = meals.reduce((sum, meal) => sum + (meal.fat || 0), 0);
 
+      const mealList = meals.map(m =>
+        `  - ${m.recognizedText || 'Manual Entry'}: ${m.calories} kcal (P:${m.protein}g F:${m.fat}g C:${m.carbs}g)`
+      ).join('\n');
+
       contextData = `
         Date: ${refDate.format('YYYY-MM-DD')}
         Total Meals Logged: ${meals.length}
@@ -66,8 +89,10 @@ export const handleChat = async (req: AuthRequest, res: Response): Promise<void>
         Carbs: ${dailySummary ? dailySummary.totalCarbs : totalCarbs}g
         Fat: ${dailySummary ? dailySummary.totalFat : totalFat}g
         AI Daily Comment (if available): ${dailySummary?.comment || 'None'}
+        Meals:
+${mealList || '  (none)'}
       `;
-    } else if (period === 'Week') {
+    } else if (normalizedPeriod === Period.Week) {
       // Find the start of the week for the reference date (assuming week starts on Monday)
       // dayjs day() 0 is Sunday, 1 is Monday.
       const dayOfWeek = refDate.day();
@@ -84,15 +109,26 @@ export const handleChat = async (req: AuthRequest, res: Response): Promise<void>
       });
 
       if (weeklySummary) {
+        // Also load meals for the week for richer context
+        const weekMeals = await prisma.meal.findMany({
+          where: { userId, loggedAt: { gte: startOfWeek } },
+          orderBy: { loggedAt: 'asc' },
+        });
+        const mealList = weekMeals.map(m =>
+          `  - ${m.recognizedText || 'Manual Entry'}: ${m.calories} kcal (P:${m.protein}g F:${m.fat}g C:${m.carbs}g)`
+        ).join('\n');
+
         contextData = `
           Week Starting: ${startOfWeek.toISOString()}
           Total Calories for the Week: ${weeklySummary.totalCalories} kcal
           Average Weight: ${weeklySummary.avgWeight || 'Not logged'}
+          Meals this week:
+${mealList || '  (none)'}
         `;
       } else {
         contextData = 'No aggregated weekly data available for this week yet.';
       }
-    } else if (period === 'Month') {
+    } else if (normalizedPeriod === Period.Month) {
       const month = refDate.month() + 1; // 1-indexed
       const year = refDate.year();
 
@@ -115,7 +151,7 @@ export const handleChat = async (req: AuthRequest, res: Response): Promise<void>
       } else {
         contextData = 'No aggregated monthly data available for this month yet.';
       }
-    } else if (period === 'All-Time') {
+    } else if (normalizedPeriod === Period.AllTime) {
       const allMonthly = await prisma.monthlySummary.findMany({
         where: { userId },
         orderBy: { year: 'asc', month: 'asc' },
@@ -130,14 +166,11 @@ export const handleChat = async (req: AuthRequest, res: Response): Promise<void>
       } else {
         contextData = 'No long-term data available yet.';
       }
-    } else {
-      res.status(400).json({ error: 'Invalid period. Must be Day, Week, Month, or All-Time.' });
-      return;
     }
 
     const prompt = `
 You are an expert AI Nutritionist. The user is asking you a question.
-Context Period requested: ${period}
+Context Period requested: ${normalizedPeriod}
 Context Data for this period:
 ${contextData}
 

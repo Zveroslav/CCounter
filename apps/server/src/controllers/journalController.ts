@@ -31,26 +31,23 @@ export const getJournalData = async (req: AuthRequest, res: Response, next: Next
       endDate = new Date();
     }
 
-    // Fetch meals in period
-    const meals = await prisma.meal.findMany({
-      where: {
-        userId,
-        loggedAt: {
-          gte: startDate,
-          lte: endDate,
-        },
-      },
-      orderBy: { loggedAt: 'desc' },
-    });
+    // Fetch meals only for day/week — for month/all-time it's not needed
+    const fetchMeals = period === 'day' || period === 'week';
+    const meals = fetchMeals
+      ? await prisma.meal.findMany({
+          where: {
+            userId,
+            loggedAt: { gte: startDate, lte: endDate },
+          },
+          orderBy: { loggedAt: 'desc' },
+        })
+      : [];
 
     // Fetch daily summaries in period (useful for charts)
     const dailySummaries = await prisma.dailySummary.findMany({
       where: {
         userId,
-        date: {
-          gte: startDate,
-          lte: endDate,
-        },
+        date: { gte: startDate, lte: endDate },
       },
       orderBy: { date: 'asc' },
     });

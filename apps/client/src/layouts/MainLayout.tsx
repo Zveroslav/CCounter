@@ -3,7 +3,11 @@ import { Home, User, Camera, Loader2 } from 'lucide-react';
 import { useRef, useState } from 'react';
 import { recognizeMeal } from '../api/meals';
 
-export default function MainLayout() {
+interface MainLayoutProps {
+  onLogout: () => void;
+}
+
+export default function MainLayout({ onLogout: _onLogout }: MainLayoutProps) {
   const location = useLocation();
   const navigate = useNavigate();
   const fileInputRef = useRef<HTMLInputElement>(null);

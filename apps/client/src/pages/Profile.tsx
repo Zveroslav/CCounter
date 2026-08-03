@@ -2,11 +2,14 @@ import { useEffect, useState } from 'react';
 import { getProfile, updateProfile, logWeight, type UserProfile } from '../api/user';
 import { Loader2, Save, LogOut } from 'lucide-react';
 
-export default function Profile() {
+interface ProfileProps {
+  onLogout: () => void;
+}
+
+export default function Profile({ onLogout }: ProfileProps) {
   const [profile, setProfile] = useState<UserProfile | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [isSaving, setIsSaving] = useState(false);
-  const [jwtInput, setJwtInput] = useState(localStorage.getItem('jwt_token') || '');
 
   // Form State
   const [name, setName] = useState('');
@@ -40,14 +43,10 @@ export default function Profile() {
     fetchProfile();
   }, []);
 
-  const handleSaveToken = () => {
-    localStorage.setItem('jwt_token', jwtInput);
-    window.location.reload();
-  };
 
   const handleLogout = () => {
     localStorage.removeItem('jwt_token');
-    window.location.reload();
+    onLogout();
   };
 
   const handleSaveProfile = async (e: React.FormEvent) => {
@@ -83,30 +82,6 @@ export default function Profile() {
     );
   }
 
-  if (!profile) {
-    return (
-      <div className="p-6 h-full flex flex-col justify-center max-w-md mx-auto">
-        <h1 className="text-2xl font-bold mb-4 text-center">Login / Setup</h1>
-        <p className="text-gray-500 mb-6 text-center text-sm">
-          Please enter your JWT Token to connect to the backend.
-        </p>
-        <input 
-          type="text" 
-          value={jwtInput} 
-          onChange={e => setJwtInput(e.target.value)} 
-          placeholder="Paste JWT Token here..."
-          className="w-full bg-gray-50 border border-gray-200 rounded-xl p-4 text-gray-800 focus:outline-none focus:ring-2 focus:ring-indigo-500 mb-4"
-        />
-        <button 
-          onClick={handleSaveToken}
-          className="w-full bg-indigo-600 hover:bg-indigo-700 text-white rounded-xl p-4 font-bold text-lg shadow-lg"
-        >
-          Authenticate
-        </button>
-      </div>
-    );
-  }
-
   return (
     <div className="h-full flex flex-col bg-white">
       <header className="px-6 py-5 border-b border-gray-100 flex justify-between items-center bg-white sticky top-0 z-10">
@@ -131,6 +106,12 @@ export default function Profile() {
                   className="w-full bg-gray-50 border border-gray-100 rounded-xl p-4 text-gray-900 font-medium focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:bg-white transition-all"
                   placeholder="Enter your name"
                 />
+              </div>
+              <div>
+                <label className="block text-xs font-semibold text-gray-500 uppercase tracking-wider mb-1">Email</label>
+                <div className="w-full bg-gray-100 border border-gray-100 rounded-xl p-4 text-gray-500 font-medium select-all">
+                  {profile?.email ?? '—'}
+                </div>
               </div>
               <div>
                 <label className="block text-xs font-semibold text-gray-500 uppercase tracking-wider mb-1">Current Weight (kg/lbs)</label>

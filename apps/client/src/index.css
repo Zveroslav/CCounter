@@ -6,6 +6,10 @@
     overscroll-behavior-y: none;
     -webkit-overflow-scrolling: touch;
     
+    /* Disable gestures and pinch zoom */
+    touch-action: manipulation;
+    -webkit-text-size-adjust: 100%;
+    
     /* Optimize for one-handed thumb reach and mobile screens */
     background-color: #f9fafb;
     color: #111827;
@@ -18,5 +22,11 @@
     padding-bottom: env(safe-area-inset-bottom);
     padding-left: env(safe-area-inset-left);
     padding-right: env(safe-area-inset-right);
+  }
+
+  /* Keep input fields operable without accidental zoom */
+  input, textarea, select {
+    font-size: 16px; /* Prevents auto-zoom on focus in iOS Safari */
+    touch-action: manipulation;
   }
 }

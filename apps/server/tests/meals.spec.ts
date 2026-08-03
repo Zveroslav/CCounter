@@ -97,4 +97,56 @@ describe('Meals Routes', () => {
     const meal = await prisma.meal.findUnique({ where: { id: createdMealId } });
     expect(meal).toBeNull();
   });
+
+  it('should reanalyze a meal with a custom prompt', async () => {
+    process.env.CLI_COMMAND_TEMPLATE = "echo '{\"calories\": 750, \"protein\": 45, \"carbs\": 60, \"fat\": 30, \"health_warnings\": \"Updated macros with extra chicken\"}'";
+
+    const tempImg = path.join(__dirname, 'temp_reanalyze.jpg');
+    fs.writeFileSync(tempImg, 'image content');
+
+    const meal = await prisma.meal.create({
+      data: {
+        userId: testUserId,
+        loggedAt: new Date(),
+        calories: 500,
+        imageUrl: tempImg,
+      }
+    });
+
+    const res = await request(app)
+      .post(`/api/meals/${meal.id}/reanalyze`)
+      .set('Authorization', `Bearer ${validToken}`)
+      .send({ prompt: 'Add 100g chicken breast' });
+
+    expect(res.status).toBe(200);
+    expect(res.body.meal.calories).toBe(750);
+    expect(res.body.result.health_warnings).toBe('Updated macros with extra chicken');
+
+    if (fs.existsSync(tempImg)) fs.unlinkSync(tempImg);
+  });
+
+  it('should delete (cancel) a meal and clean up its image file', async () => {
+    const tempImg = path.join(__dirname, 'temp_delete.jpg');
+    fs.writeFileSync(tempImg, 'image content');
+
+    const meal = await prisma.meal.create({
+      data: {
+        userId: testUserId,
+        loggedAt: new Date(),
+        calories: 300,
+        imageUrl: tempImg,
+      }
+    });
+
+    const res = await request(app)
+      .delete(`/api/meals/${meal.id}`)
+      .set('Authorization', `Bearer ${validToken}`);
+
+    expect(res.status).toBe(200);
+    expect(res.body.message).toBe('Meal cancelled and deleted successfully');
+    expect(fs.existsSync(tempImg)).toBe(false);
+
+    const deletedMeal = await prisma.meal.findUnique({ where: { id: meal.id } });
+    expect(deletedMeal).toBeNull();
+  });
 });

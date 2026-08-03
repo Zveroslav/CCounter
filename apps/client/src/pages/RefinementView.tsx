@@ -1,7 +1,7 @@
 import { useEffect, useState } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
-import { Loader2, ArrowLeft, Save, AlertTriangle } from 'lucide-react';
-import { getJobStatus, updateMeal, type JobStatusResponse } from '../api/meals';
+import { Loader2, ArrowLeft, Save, AlertTriangle, Edit3, X, Sparkles } from 'lucide-react';
+import { getJobStatus, updateMeal, deleteMeal, reanalyzeMeal, type JobStatusResponse } from '../api/meals';
 
 export default function RefinementView() {
   const { jobId } = useParams<{ jobId: string }>();
@@ -10,6 +10,12 @@ export default function RefinementView() {
   const [job, setJob] = useState<JobStatusResponse | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [isSaving, setIsSaving] = useState(false);
+  const [isCancelling, setIsCancelling] = useState(false);
+
+  // Edit / Re-analyze modal state
+  const [isEditModalOpen, setIsEditModalOpen] = useState(false);
+  const [editPrompt, setEditPrompt] = useState('');
+  const [isReanalyzing, setIsReanalyzing] = useState(false);
 
   // Form state
   const [calories, setCalories] = useState<number>(0);
@@ -77,6 +83,49 @@ export default function RefinementView() {
     }
   };
 
+  const handleCancel = async () => {
+    if (!job?.mealId) {
+      navigate('/');
+      return;
+    }
+
+    try {
+      setIsCancelling(true);
+      await deleteMeal(job.mealId);
+      navigate('/');
+    } catch (err) {
+      console.error('Failed to cancel meal:', err);
+      alert('Failed to cancel meal.');
+      setIsCancelling(false);
+    }
+  };
+
+  const handleReanalyze = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!job?.mealId || !editPrompt.trim()) return;
+
+    try {
+      setIsReanalyzing(true);
+      const response = await reanalyzeMeal(job.mealId, editPrompt.trim());
+      if (response.result) {
+        setCalories(response.result.calories || 0);
+        setProtein(response.result.protein || 0);
+        setFat(response.result.fat || 0);
+        setCarbs(response.result.carbs || 0);
+        if (response.result.health_warnings) {
+          setComments(response.result.health_warnings);
+        }
+      }
+      setIsEditModalOpen(false);
+      setEditPrompt('');
+    } catch (err) {
+      console.error('Failed to reanalyze meal:', err);
+      alert('Failed to re-analyze meal with prompt.');
+    } finally {
+      setIsReanalyzing(false);
+    }
+  };
+
   if (error) {
     return (
       <div className="flex flex-col items-center justify-center h-full p-6 text-center">
@@ -104,10 +153,10 @@ export default function RefinementView() {
   }
 
   return (
-    <div className="flex flex-col h-full bg-white">
+    <div className="flex flex-col h-full bg-white relative">
       {/* Header */}
       <header className="flex items-center px-4 py-4 border-b border-gray-100">
-        <button onClick={() => navigate('/')} className="p-2 -ml-2 text-gray-600">
+        <button onClick={handleCancel} disabled={isCancelling} className="p-2 -ml-2 text-gray-600 hover:text-red-600">
           <ArrowLeft size={24} />
         </button>
         <h1 className="text-lg font-bold text-gray-900 flex-1 text-center pr-8">Refine Meal</h1>
@@ -168,16 +217,103 @@ export default function RefinementView() {
           ></textarea>
         </div>
 
-        <button 
-          type="submit"
-          disabled={isSaving}
-          className="w-full bg-indigo-600 hover:bg-indigo-700 text-white rounded-xl p-4 font-bold text-lg flex items-center justify-center space-x-2 shadow-lg shadow-indigo-200 transition-all active:scale-[0.98] mt-4 disabled:opacity-75"
-        >
-          {isSaving ? <Loader2 size={24} className="animate-spin" /> : <Save size={24} />}
-          <span>Save to Journal</span>
-        </button>
+        {/* Action Buttons */}
+        <div className="space-y-3 pt-2">
+          <button 
+            type="submit"
+            disabled={isSaving || isCancelling}
+            className="w-full bg-indigo-600 hover:bg-indigo-700 text-white rounded-xl p-4 font-bold text-lg flex items-center justify-center space-x-2 shadow-lg shadow-indigo-200 transition-all active:scale-[0.98] disabled:opacity-75"
+          >
+            {isSaving ? <Loader2 size={24} className="animate-spin" /> : <Save size={24} />}
+            <span>Save to Journal</span>
+          </button>
+
+          <div className="grid grid-cols-2 gap-3">
+            <button
+              type="button"
+              onClick={() => setIsEditModalOpen(true)}
+              disabled={isSaving || isCancelling}
+              className="w-full bg-indigo-50 hover:bg-indigo-100 text-indigo-700 rounded-xl p-3.5 font-semibold text-sm flex items-center justify-center space-x-2 transition-all active:scale-[0.98]"
+            >
+              <Edit3 size={18} />
+              <span>Edit / Clarify AI</span>
+            </button>
+
+            <button
+              type="button"
+              onClick={handleCancel}
+              disabled={isSaving || isCancelling}
+              className="w-full bg-red-50 hover:bg-red-100 text-red-600 rounded-xl p-3.5 font-semibold text-sm flex items-center justify-center space-x-2 transition-all active:scale-[0.98]"
+            >
+              {isCancelling ? <Loader2 size={18} className="animate-spin" /> : <X size={18} />}
+              <span>Cancel</span>
+            </button>
+          </div>
+        </div>
 
       </form>
+
+      {/* Edit / Clarification Modal */}
+      {isEditModalOpen && (
+        <div className="fixed inset-0 bg-black/50 z-50 flex items-center justify-center p-4 backdrop-blur-sm animate-in fade-in">
+          <div className="bg-white rounded-2xl max-w-md w-full p-6 space-y-4 shadow-2xl">
+            <div className="flex items-center justify-between border-b border-gray-100 pb-3">
+              <div className="flex items-center space-x-2 text-indigo-600">
+                <Sparkles size={22} />
+                <h3 className="font-bold text-lg text-gray-900">Clarify Dish Details</h3>
+              </div>
+              <button 
+                type="button" 
+                onClick={() => setIsEditModalOpen(false)}
+                className="text-gray-400 hover:text-gray-600 p-1"
+              >
+                <X size={20} />
+              </button>
+            </div>
+
+            <p className="text-sm text-gray-600">
+              Specify what needs to be updated on this photo (e.g. &quot;Add 50g olive oil&quot;, &quot;This is skimmed milk&quot;).
+            </p>
+
+            <textarea
+              value={editPrompt}
+              onChange={e => setEditPrompt(e.target.value)}
+              rows={4}
+              placeholder="What details would you like to clarify for AI?"
+              className="w-full bg-gray-50 border border-gray-200 rounded-xl p-3 text-gray-800 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500"
+              autoFocus
+            />
+
+            <div className="flex items-center justify-end space-x-3 pt-2">
+              <button
+                type="button"
+                onClick={() => setIsEditModalOpen(false)}
+                className="px-4 py-2 text-sm font-medium text-gray-600 hover:text-gray-800"
+              >
+                Close
+              </button>
+              <button
+                type="button"
+                onClick={handleReanalyze}
+                disabled={isReanalyzing || !editPrompt.trim()}
+                className="bg-indigo-600 hover:bg-indigo-700 text-white px-5 py-2.5 rounded-xl text-sm font-bold flex items-center space-x-2 shadow-md disabled:opacity-50"
+              >
+                {isReanalyzing ? (
+                  <>
+                    <Loader2 size={16} className="animate-spin" />
+                    <span>Recalculating...</span>
+                  </>
+                ) : (
+                  <>
+                    <Sparkles size={16} />
+                    <span>Recalculate</span>
+                  </>
+                )}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }

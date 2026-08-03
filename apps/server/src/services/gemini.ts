@@ -45,9 +45,12 @@ export type MealRecognitionResult = z.infer<typeof MealRecognitionSchema>;
 // Services
 // ---------------------------------------------------------------------------
 
-export const recognizeMealFromImage = async (imagePath: string): Promise<MealRecognitionResult> => {
+export const recognizeMealFromImage = async (imagePath: string, customPrompt?: string): Promise<MealRecognitionResult> => {
   const template = process.env.CLI_COMMAND_TEMPLATE;
-  const prompt = process.env.AI_SYSTEM_PROMPT || 'Analyze this meal';
+  const basePrompt = process.env.AI_SYSTEM_PROMPT || 'Analyze this meal';
+  const prompt = customPrompt
+    ? `${basePrompt}. Additional user instructions/clarification: ${customPrompt}`
+    : basePrompt;
 
   if (!template) {
     throw new Error('CLI_COMMAND_TEMPLATE is not set in environment variables');

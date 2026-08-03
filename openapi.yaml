@@ -272,6 +272,51 @@ paths:
           description: Forbidden
         '404':
           description: Meal not found
+    delete:
+      summary: Cancel and delete a meal draft
+      description: Delete an unconfirmed meal draft, associated recognition job, and image.
+      parameters:
+        - in: path
+          name: id
+          schema:
+            type: string
+            format: uuid
+          required: true
+      responses:
+        '200':
+          description: Meal deleted successfully
+        '404':
+          description: Meal not found
+
+  /meals/{id}/reanalyze:
+    post:
+      summary: Re-analyze an unconfirmed meal with an extra prompt
+      parameters:
+        - in: path
+          name: id
+          schema:
+            type: string
+            format: uuid
+          required: true
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required:
+                - prompt
+              properties:
+                prompt:
+                  type: string
+                  description: Clarification prompt for Gemini Vision
+      responses:
+        '200':
+          description: Meal re-analyzed successfully
+        '400':
+          description: Bad Request or image missing
+        '404':
+          description: Meal not found
 
   /chat:
     post:

@@ -49,3 +49,16 @@ export async function updateMeal(mealId: string, data: MealUpdateData): Promise<
     body: JSON.stringify(data),
   });
 }
+
+export async function deleteMeal(mealId: string): Promise<any> {
+  return fetchWithAuth(`/meals/${mealId}`, {
+    method: 'DELETE',
+  });
+}
+
+export async function reanalyzeMeal(mealId: string, prompt: string): Promise<{ message: string; meal: any; result: JobResult }> {
+  return fetchWithAuth(`/meals/${mealId}/reanalyze`, {
+    method: 'POST',
+    body: JSON.stringify({ prompt }),
+  });
+}

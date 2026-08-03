@@ -27,6 +27,7 @@ export const recognizeMeal = async (req: AuthRequest, res: Response, next: NextF
             userId,
             loggedAt: new Date(),
             calories: 0,
+            imageUrl: imagePath,
           },
         },
         status: 'PENDING',
@@ -48,14 +49,12 @@ export const recognizeMeal = async (req: AuthRequest, res: Response, next: NextF
         const result = await recognizeMealFromImage(imagePath);
         
         await prisma.meal.update({
-          where: { id: job.mealId },
+          where: { id: job.mealId! },
           data: {
             calories: result.calories,
             protein: result.protein,
             carbs: result.carbs,
             fat: result.fat,
-            // Assuming we could save health warnings in a notes field or similar.
-            // Since Meal model doesn't have a direct field, let's put it in recognizedText
             recognizedText: result.health_warnings,
           },
         });
@@ -82,10 +81,9 @@ export const recognizeMeal = async (req: AuthRequest, res: Response, next: NextF
             console.error('Failed to delete empty meal on job failure:', deleteErr);
           }
         }
-      } finally {
-        // Clean up the temporary file
-        fs.unlink(imagePath, (err) => {
-          if (err) console.error('Failed to delete temp file:', err);
+        // Clean up temp file only if recognition failed and meal was removed
+        fs.unlink(imagePath, (unlinkErr) => {
+          if (unlinkErr && unlinkErr.code !== 'ENOENT') console.error('Failed to delete temp file:', unlinkErr);
         });
       }
     })();
@@ -142,6 +140,13 @@ export const updateMeal = async (req: AuthRequest, res: Response, next: NextFunc
       return next(new AppError('Forbidden', 403));
     }
 
+    // If temporary image file exists, clean it up upon final save
+    if (meal.imageUrl) {
+      fs.unlink(meal.imageUrl, (err) => {
+        if (err && err.code !== 'ENOENT') console.error('Failed to delete temp image on meal update:', err);
+      });
+    }
+
     const updatedMeal = await prisma.meal.update({
       where: { id },
       data: {
@@ -150,10 +155,115 @@ export const updateMeal = async (req: AuthRequest, res: Response, next: NextFunc
         fat: fat !== undefined ? Number(fat) : meal.fat,
         carbs: carbs !== undefined ? Number(carbs) : meal.carbs,
         recognizedText: recognizedText !== undefined ? String(recognizedText) : meal.recognizedText,
+        imageUrl: null,
       }
     });
 
     res.json({ message: 'Meal updated successfully', meal: updatedMeal });
+  } catch (error) {
+    next(error);
+  }
+};
+
+export const deleteMeal = async (req: AuthRequest, res: Response, next: NextFunction) => {
+  try {
+    const id = req.params.id as string;
+    const userId = req.user?.id;
+
+    if (!userId) {
+      return next(new AppError('Unauthorized', 401));
+    }
+
+    const meal = await prisma.meal.findUnique({
+      where: { id },
+      include: { recognitionJob: true }
+    });
+
+    if (!meal) {
+      return next(new AppError('Meal not found', 404));
+    }
+
+    if (meal.userId !== userId) {
+      return next(new AppError('Forbidden', 403));
+    }
+
+    if (meal.imageUrl) {
+      fs.unlink(meal.imageUrl, (err) => {
+        if (err && err.code !== 'ENOENT') console.error('Failed to delete image file on meal delete:', err);
+      });
+    }
+
+    if (meal.recognitionJob) {
+      await prisma.recognitionJob.delete({ where: { id: meal.recognitionJob.id } });
+    }
+
+    await prisma.meal.delete({ where: { id } });
+
+    res.json({ message: 'Meal cancelled and deleted successfully' });
+  } catch (error) {
+    next(error);
+  }
+};
+
+export const reanalyzeMeal = async (req: AuthRequest, res: Response, next: NextFunction) => {
+  try {
+    const id = req.params.id as string;
+    const userId = req.user?.id;
+
+    if (!userId) {
+      return next(new AppError('Unauthorized', 401));
+    }
+
+    const { prompt } = req.body;
+    if (!prompt || typeof prompt !== 'string') {
+      return next(new AppError('Prompt is required', 400));
+    }
+
+    const meal = await prisma.meal.findUnique({
+      where: { id },
+      include: { recognitionJob: true }
+    });
+
+    if (!meal) {
+      return next(new AppError('Meal not found', 404));
+    }
+
+    if (meal.userId !== userId) {
+      return next(new AppError('Forbidden', 403));
+    }
+
+    if (!meal.imageUrl || !fs.existsSync(meal.imageUrl)) {
+      return next(new AppError('Original image not available for re-analysis', 400));
+    }
+
+    const result = await recognizeMealFromImage(meal.imageUrl, prompt);
+
+    const updatedMeal = await prisma.meal.update({
+      where: { id },
+      data: {
+        calories: result.calories,
+        protein: result.protein,
+        carbs: result.carbs,
+        fat: result.fat,
+        recognizedText: result.health_warnings,
+      }
+    });
+
+    if (meal.recognitionJob) {
+      await prisma.recognitionJob.update({
+        where: { id: meal.recognitionJob.id },
+        data: {
+          status: 'COMPLETED',
+          result: JSON.stringify(result),
+        }
+      });
+    }
+
+    res.json({
+      message: 'Meal re-analyzed successfully',
+      meal: updatedMeal,
+      result,
+    });
   } catch (error) {
     next(error);
   }

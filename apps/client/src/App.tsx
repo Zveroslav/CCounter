@@ -2,7 +2,7 @@ import { useState } from 'react';
 import { BrowserRouter, Routes, Route } from 'react-router-dom';
 import MainLayout from './layouts/MainLayout';
 import Dashboard from './pages/Dashboard/index';
-import Profile from './pages/Profile';
+import Profile from './pages/Profile/index';
 import Refinement from './pages/Refinement/index';
 import TokenGate from './components/TokenGate';
 

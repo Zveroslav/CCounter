@@ -76,7 +76,7 @@ export default function ChatWidget({ period, targetDate }: ChatWidgetProps) {
             key={msg.id} 
             className={`flex ${msg.sender === 'user' ? 'justify-end' : 'justify-start'}`}
           >
-            <div className={`max-w-[80%] rounded-2xl px-4 py-3 text-sm shadow-sm ${
+            <div className={`whitespace-pre-wrap max-w-[80%] rounded-2xl px-4 py-3 text-sm shadow-sm ${
               msg.sender === 'user' 
                 ? 'bg-indigo-600 text-white rounded-br-sm' 
                 : 'bg-white border border-gray-100 text-gray-800 rounded-bl-sm'

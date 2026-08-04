@@ -45,6 +45,7 @@ app.use((req: Request, res: Response, next: NextFunction) => {
 
 app.use(express.json());
 
+app.use('/uploads', express.static(path.join(__dirname, '../../uploads')));
 
 app.use('/api/meals', mealsRoutes);
 app.use('/api/chat', chatRoutes);

@@ -12,6 +12,8 @@ export interface JobResult {
   fat: number;
   carbs: number;
   health_warnings?: string;
+  title?: string;
+  description?: string;
 }
 
 export interface JobStatusResponse {
@@ -22,6 +24,7 @@ export interface JobStatusResponse {
 }
 
 export interface MealUpdateData {
+  title?: string;
   calories?: number;
   protein?: number;
   fat?: number;

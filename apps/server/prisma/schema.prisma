@@ -38,6 +38,8 @@ model Meal {
   userId         String
   user           User            @relation(fields: [userId], references: [id])
   imageUrl       String?
+  thumbnailUrl   String?
+  title          String?
   recognizedText String?
   calories       Int
   protein        Float?
@@ -58,6 +60,7 @@ model DailySummary {
   totalCarbs    Float    @default(0)
   totalFat      Float    @default(0)
   comment       String?
+  userNote      String?
   createdAt     DateTime @default(now())
   updatedAt     DateTime @updatedAt
 
@@ -72,6 +75,7 @@ model WeeklySummary {
   endDate       DateTime
   totalCalories Int      @default(0)
   avgWeight     Float?
+  userNote      String?
   createdAt     DateTime @default(now())
   updatedAt     DateTime @updatedAt
 
@@ -86,6 +90,7 @@ model MonthlySummary {
   year          Int
   totalCalories Int      @default(0)
   avgWeight     Float?
+  userNote      String?
   createdAt     DateTime @default(now())
   updatedAt     DateTime @updatedAt
 

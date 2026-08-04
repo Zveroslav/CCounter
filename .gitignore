@@ -13,3 +13,4 @@ apps/server/uploads/
 *.sqlite
 t.png
 
+apps/uploads/

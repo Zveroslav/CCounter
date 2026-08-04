@@ -32,11 +32,12 @@ function execWithTimeout(command: string, timeoutMs = CLI_TIMEOUT_MS): Promise<{
 // ---------------------------------------------------------------------------
 
 export const MealRecognitionSchema = z.object({
-  calories: z.number(),
-  protein: z.number(),
-  carbs: z.number(),
-  fat: z.number(),
-  health_warnings: z.string().optional(),
+  title: z.string().optional(),
+  description: z.string().optional(),
+  calories: z.number().transform(Math.round),
+  protein: z.number().transform(Math.round),
+  carbs: z.number().transform(Math.round),
+  fat: z.number().transform(Math.round),
 });
 
 export type MealRecognitionResult = z.infer<typeof MealRecognitionSchema>;

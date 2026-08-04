@@ -4,6 +4,7 @@ import fs from 'fs';
 import { recognizeMealFromImage } from '../services/gemini';
 import { AuthRequest } from '../middleware/auth';
 import { AppError } from '../middleware/error';
+import { generateAndSaveThumbnail } from '../services/imageService';
 
 export const recognizeMeal = async (req: AuthRequest, res: Response, next: NextFunction) => {
   try {
@@ -55,7 +56,8 @@ export const recognizeMeal = async (req: AuthRequest, res: Response, next: NextF
             protein: result.protein,
             carbs: result.carbs,
             fat: result.fat,
-            recognizedText: result.health_warnings,
+            title: result.title,
+            recognizedText: result.description,
           },
         });
 
@@ -129,7 +131,7 @@ export const updateMeal = async (req: AuthRequest, res: Response, next: NextFunc
       return next(new AppError('Unauthorized', 401));
     }
 
-    const { calories, protein, fat, carbs, recognizedText } = req.body;
+    const { title, calories, protein, fat, carbs, recognizedText } = req.body;
 
     const meal = await prisma.meal.findUnique({ where: { id } });
     if (!meal) {
@@ -140,8 +142,13 @@ export const updateMeal = async (req: AuthRequest, res: Response, next: NextFunc
       return next(new AppError('Forbidden', 403));
     }
 
-    // If temporary image file exists, clean it up upon final save
+    let thumbnailUrl: string | undefined;
     if (meal.imageUrl) {
+      try {
+        thumbnailUrl = await generateAndSaveThumbnail(userId, meal.imageUrl);
+      } catch (err) {
+        console.error('Failed to generate thumbnail:', err);
+      }
       fs.unlink(meal.imageUrl, (err) => {
         if (err && err.code !== 'ENOENT') console.error('Failed to delete temp image on meal update:', err);
       });
@@ -150,12 +157,14 @@ export const updateMeal = async (req: AuthRequest, res: Response, next: NextFunc
     const updatedMeal = await prisma.meal.update({
       where: { id },
       data: {
-        calories: calories !== undefined ? Number(calories) : meal.calories,
-        protein: protein !== undefined ? Number(protein) : meal.protein,
-        fat: fat !== undefined ? Number(fat) : meal.fat,
-        carbs: carbs !== undefined ? Number(carbs) : meal.carbs,
+        title: title !== undefined ? String(title) : meal.title,
+        calories: calories !== undefined ? Math.round(Number(calories)) : meal.calories,
+        protein: protein !== undefined ? Math.round(Number(protein)) : meal.protein,
+        fat: fat !== undefined ? Math.round(Number(fat)) : meal.fat,
+        carbs: carbs !== undefined ? Math.round(Number(carbs)) : meal.carbs,
         recognizedText: recognizedText !== undefined ? String(recognizedText) : meal.recognizedText,
         imageUrl: null,
+        ...(thumbnailUrl && { thumbnailUrl }),
       }
     });
 
@@ -245,7 +254,8 @@ export const reanalyzeMeal = async (req: AuthRequest, res: Response, next: NextF
         protein: result.protein,
         carbs: result.carbs,
         fat: result.fat,
-        recognizedText: result.health_warnings,
+        title: result.title,
+        recognizedText: result.description,
       }
     });
 

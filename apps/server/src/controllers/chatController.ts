@@ -89,6 +89,7 @@ export const handleChat = async (req: AuthRequest, res: Response): Promise<void>
         Carbs: ${dailySummary ? dailySummary.totalCarbs : totalCarbs}g
         Fat: ${dailySummary ? dailySummary.totalFat : totalFat}g
         AI Daily Comment (if available): ${dailySummary?.comment || 'None'}
+        User's Personal Note/Journal: ${dailySummary?.userNote || 'None'}
         Meals:
 ${mealList || '  (none)'}
       `;
@@ -122,6 +123,7 @@ ${mealList || '  (none)'}
           Week Starting: ${startOfWeek.toISOString()}
           Total Calories for the Week: ${weeklySummary.totalCalories} kcal
           Average Weight: ${weeklySummary.avgWeight || 'Not logged'}
+          User's Personal Note/Journal: ${weeklySummary.userNote || 'None'}
           Meals this week:
 ${mealList || '  (none)'}
         `;
@@ -147,6 +149,7 @@ ${mealList || '  (none)'}
           Month: ${month}/${year}
           Total Calories for the Month: ${monthlySummary.totalCalories} kcal
           Average Weight: ${monthlySummary.avgWeight || 'Not logged'}
+          User's Personal Note/Journal: ${monthlySummary.userNote || 'None'}
         `;
       } else {
         contextData = 'No aggregated monthly data available for this month yet.';
@@ -169,14 +172,24 @@ ${mealList || '  (none)'}
     }
 
     const prompt = `
-You are an expert AI Nutritionist. The user is asking you a question.
+You are an empathetic, expert AI Nutritionist analyzing the user's dietary data and personal journal.
+Your goal is to provide concise, actionable, and insightful feedback based on the context.
+
+CRITICAL RULES:
+1. DO NOT simply repeat or list the user's macros, calories, or meals. The user already sees this data on their screen.
+2. Focus on synthesis: correlate their data with their personal notes/feelings (e.g., if their stomach hurts, look for possible causes like heavy meals, large portions, or specific foods).
+3. Provide a very short, synthesized conclusion of their progress for the period.
+4. Offer 1-2 practical, actionable recommendations tailored to their message and data.
+5. Keep your response brief, friendly, and conversational.
+6. ABSOLUTELY NO MARKDOWN: Do not use *, **, ###, or bullet points. Use plain text and simple newlines only.
+
 Context Period requested: ${normalizedPeriod}
 Context Data for this period:
 ${contextData}
 
 User's message: "${message}"
 
-Please respond clearly, concisely, and helpfully based on the data provided above.
+Respond clearly, concisely, and helpfully following the rules above.
 `;
 
     const aiResponse = await gemini.chatWithNutritionist(prompt);

@@ -16,12 +16,14 @@ export default function RefinementView() {
   const [isEditModalOpen, setIsEditModalOpen] = useState(false);
   const [editPrompt, setEditPrompt] = useState('');
   const [isReanalyzing, setIsReanalyzing] = useState(false);
+  const [promptHistory, setPromptHistory] = useState<string[]>([]);
 
   // Form state
   const [calories, setCalories] = useState<number>(0);
   const [protein, setProtein] = useState<number>(0);
   const [fat, setFat] = useState<number>(0);
   const [carbs, setCarbs] = useState<number>(0);
+  const [title, setTitle] = useState<string>('');
   const [comments, setComments] = useState<string>('');
 
   useEffect(() => {
@@ -40,7 +42,8 @@ export default function RefinementView() {
             setProtein(data.result.protein || 0);
             setFat(data.result.fat || 0);
             setCarbs(data.result.carbs || 0);
-            setComments(data.result.health_warnings || '');
+            setTitle(data.result.title || '');
+            setComments(data.result.description || '');
           }
           clearInterval(pollInterval);
         } else if (data.status === 'FAILED') {
@@ -67,6 +70,7 @@ export default function RefinementView() {
     try {
       setIsSaving(true);
       await updateMeal(job.mealId, {
+        title,
         calories,
         protein,
         fat,
@@ -106,15 +110,24 @@ export default function RefinementView() {
 
     try {
       setIsReanalyzing(true);
-      const response = await reanalyzeMeal(job.mealId, editPrompt.trim());
+      const userMessage = `User request: ${editPrompt.trim()}`;
+      const fullContextPrompt = [...promptHistory, userMessage].join('\n\n');
+      
+      const response = await reanalyzeMeal(job.mealId, fullContextPrompt);
       if (response.result) {
         setCalories(response.result.calories || 0);
         setProtein(response.result.protein || 0);
         setFat(response.result.fat || 0);
         setCarbs(response.result.carbs || 0);
-        if (response.result.health_warnings) {
-          setComments(response.result.health_warnings);
-        }
+        if (response.result.title) setTitle(response.result.title);
+        if (response.result.description) setComments(response.result.description);
+        
+        // Append to history for future prompts
+        setPromptHistory(prev => [
+          ...prev, 
+          userMessage, 
+          `AI output (for context, do not duplicate exactly): Title - ${response.result.title || 'N/A'}, Macros - ${response.result.calories} kcal, ${response.result.protein}g protein, ${response.result.fat}g fat, ${response.result.carbs}g carbs. Description: ${response.result.description || ''}`
+        ]);
       }
       setIsEditModalOpen(false);
       setEditPrompt('');
@@ -242,14 +255,15 @@ export default function RefinementView() {
         })()}
 
         <div className="space-y-2">
-          <label className="block text-sm font-semibold text-gray-700">Health Warnings & Comments</label>
-          <textarea
-            value={comments}
-            onChange={e => setComments(e.target.value)}
-            rows={4}
-            placeholder="Add any notes about this meal..."
-            className="w-full bg-gray-50 border border-gray-200 rounded-xl p-4 text-gray-800 focus:outline-none focus:ring-2 focus:ring-indigo-500"
-          ></textarea>
+          <label className="block text-sm font-semibold text-gray-700">AI Analysis</label>
+          <div className="w-full bg-gray-50 border border-gray-200 rounded-xl p-4 text-gray-800">
+            {title && <h3 className="font-bold text-lg mb-2">{title}</h3>}
+            {comments ? (
+              <p className="text-sm leading-relaxed">{comments}</p>
+            ) : (
+              <p className="text-sm italic text-gray-400">No additional details.</p>
+            )}
+          </div>
         </div>
 
         {/* Action Buttons */}

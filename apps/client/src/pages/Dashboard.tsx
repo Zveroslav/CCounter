@@ -1,6 +1,7 @@
 import { useState, useEffect, useMemo, useRef } from 'react';
 import { Loader2, ChevronLeft, ChevronRight, X, Bot } from 'lucide-react';
-import { getJournalData, type JournalData, type Meal } from '../api/journal';
+import { getJournalData, saveUserNote, type JournalData, type Meal } from '../api/journal';
+import { deleteMeal } from '../api/meals';
 import { getProfile, type UserProfile } from '../api/user';
 import { format, parseISO, subDays, addDays, subWeeks, addWeeks, subMonths, addMonths, startOfWeek, eachDayOfInterval, endOfWeek, isSameDay, getHours } from 'date-fns';
 import {
@@ -25,8 +26,11 @@ export default function Dashboard() {
   const [isLoading, setIsLoading] = useState(true);
   const [showMealsModal, setShowMealsModal] = useState(false);
   const [showChatModal, setShowChatModal] = useState(false);
-  const [activeAlert, setActiveAlert] = useState<string | null>(null);
+  const [activeAlert, setActiveAlert] = useState<string | { x: number, y: number, text: string } | null>(null);
   const scrollRef = useRef<HTMLDivElement>(null);
+  const [selectedMeal, setSelectedMeal] = useState<Meal | null>(null);
+  const [userNote, setUserNote] = useState('');
+  const [isSavingNote, setIsSavingNote] = useState(false);
 
   // Close alert tooltip on outside click
   useEffect(() => {
@@ -43,18 +47,21 @@ export default function Dashboard() {
   }, []);
 
   // Fetch Journal Data when period or targetDate changes
+  const loadData = async () => {
+    try {
+      setIsLoading(true);
+      const res = await getJournalData(period, targetDate.toISOString());
+      setData(res);
+      setUserNote(res.periodSummary?.userNote || '');
+    } catch (err) {
+      console.error('Failed to load journal', err);
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  // Fetch Journal Data when period or targetDate changes
   useEffect(() => {
-    const loadData = async () => {
-      try {
-        setIsLoading(true);
-        const res = await getJournalData(period, targetDate.toISOString());
-        setData(res);
-      } catch (err) {
-        console.error('Failed to load journal', err);
-      } finally {
-        setIsLoading(false);
-      }
-    };
     loadData();
   }, [period, targetDate]);
 
@@ -73,6 +80,19 @@ export default function Dashboard() {
     if (period === 'day') setTargetDate(addDays(targetDate, 1));
     else if (period === 'week') setTargetDate(addWeeks(targetDate, 1));
     else if (period === 'month') setTargetDate(addMonths(targetDate, 1));
+  };
+
+  const handleSaveNote = async () => {
+    try {
+      setIsSavingNote(true);
+      await saveUserNote(period, targetDate.toISOString(), userNote);
+      // Optional: show a small success indicator or just rely on state
+    } catch (err) {
+      console.error('Failed to save note', err);
+      alert('Failed to save note');
+    } finally {
+      setIsSavingNote(false);
+    }
   };
 
   const formattedDateLabel = useMemo(() => {
@@ -158,6 +178,16 @@ export default function Dashboard() {
 
   return (
     <div className="flex flex-col h-full bg-gray-50">
+      {selectedMeal && (
+        <MealDetailsModal
+          meal={selectedMeal}
+          onClose={() => setSelectedMeal(null)}
+          onDelete={() => {
+            setSelectedMeal(null);
+            loadData();
+          }}
+        />
+      )}
 
       {/* Header Tabs */}
       <div className="bg-white px-4 pt-4 pb-2 border-b border-gray-100 shadow-sm sticky top-0 z-10">
@@ -251,8 +281,6 @@ export default function Dashboard() {
 
                 {/* Divider */}
                 <div className="border-t border-gray-100" />
-
-                {/* Macros 3-col */}
                 {(() => {
                   const pCals = totalProteinToday * 4;
                   const fCals = totalFatToday * 9;
@@ -339,7 +367,7 @@ export default function Dashboard() {
                 )}
                 <div className="h-56">
                   <ResponsiveContainer width="100%" height="100%">
-                    <BarChart data={chartData} margin={{ top: period === 'month' ? 20 : 8, right: 10, left: period === 'month' ? 0 : -20, bottom: 0 }}>
+                    <BarChart data={chartData} margin={{ top: 20, right: 10, left: 0, bottom: 0 }}>
                       <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#f3f4f6" />
                       <XAxis
                         dataKey="name"
@@ -351,8 +379,8 @@ export default function Dashboard() {
                       <YAxis
                         axisLine={false}
                         tickLine={false}
-                        tick={period === 'month' ? false : { fill: '#9ca3af', fontSize: 12 }}
-                        width={period === 'month' ? 0 : 40}
+                        tick={false}
+                        width={0}
                       />
                       <Tooltip
                         cursor={false}
@@ -387,15 +415,19 @@ export default function Dashboard() {
                           y={profile.targetCalories}
                           stroke="#c7d2fe"
                           strokeDasharray="3 3"
-                          label={period === 'month' ? {
-                            value: `${profile.targetCalories} kcal`,
-                            position: 'top',
-                            textAnchor: 'middle',
-                            fill: '#a5b4fc',
-                            fontSize: 11,
-                            fontWeight: 700,
-                            dy: -4,
-                          } : undefined}
+                          label={({ viewBox }: any) => {
+                            if (!viewBox) return null;
+                            const x = viewBox.width ? viewBox.width / 2 : 150;
+                            const y = viewBox.y;
+                            return (
+                              <g>
+                                <rect x={x - 35} y={y - 12} width={70} height={18} fill="#e0e7ff" rx={6} opacity={0.9} />
+                                <text x={x} y={y + 1} fill="#4f46e5" fontSize={11} fontWeight={700} textAnchor="middle">
+                                  {profile.targetCalories} kcal
+                                </text>
+                              </g>
+                            );
+                          }}
                         />
                       )}
 
@@ -460,7 +492,6 @@ export default function Dashboard() {
             {(period === 'day' || period === 'week') && (() => {
               const meals = data?.meals ?? [];
               const preview = meals.slice(0, 4);
-              const hasMore = meals.length > 4;
               return (
                 <div className="space-y-2">
                   <div className="flex justify-between items-center px-2">
@@ -480,20 +511,34 @@ export default function Dashboard() {
                     </div>
                   ) : (
                     <>
-                      {preview.map(meal => <MealCard key={meal.id} meal={meal} showTime />)}
-                      {hasMore && (
-                        <button
-                          onClick={() => setShowMealsModal(true)}
-                          className="w-full py-3 rounded-2xl bg-white border border-gray-200 text-sm font-bold text-indigo-600 hover:bg-indigo-50 transition-colors shadow-sm"
-                        >
-                          Show All {meals.length} meals
-                        </button>
-                      )}
+                      {preview.map(meal => <MealCard key={meal.id} meal={meal} showTime onClick={() => setSelectedMeal(meal)} />)}
                     </>
                   )}
                 </div>
               );
             })()}
+            {/* User Journal / Notes */}
+            <div className="space-y-2 mt-6">
+              <h2 className="text-lg font-bold text-gray-900 px-2">Your Notes</h2>
+              <div className="bg-white rounded-3xl p-4 shadow-sm border border-gray-100 flex flex-col">
+                <textarea
+                  value={userNote}
+                  onChange={(e) => setUserNote(e.target.value)}
+                  placeholder={`Write your thoughts, feelings, or notes for this ${period}...`}
+                  className="w-full resize-none outline-none min-h-[100px] text-gray-700 bg-transparent placeholder:text-gray-300"
+                />
+                <div className="flex justify-end mt-2">
+                  <button
+                    onClick={handleSaveNote}
+                    disabled={isSavingNote}
+                    className="bg-indigo-50 text-indigo-600 hover:bg-indigo-100 font-bold px-4 py-2 rounded-xl text-sm transition-colors disabled:opacity-50 flex items-center space-x-2"
+                  >
+                    {isSavingNote ? <Loader2 className="w-4 h-4 animate-spin" /> : <span>Save Note</span>}
+                  </button>
+                </div>
+              </div>
+            </div>
+
 
             {/* Meals Modal */}
             {showMealsModal && (
@@ -502,6 +547,10 @@ export default function Dashboard() {
                 period={period}
                 targetDate={targetDate}
                 onClose={() => setShowMealsModal(false)}
+                onSelectMeal={(meal) => {
+                  setShowMealsModal(false);
+                  setSelectedMeal(meal);
+                }}
               />
             )}
 
@@ -534,30 +583,37 @@ export default function Dashboard() {
 // Shared meal card
 // ---------------------------------------------------------------------------
 
-function MealCard({ meal, showTime }: { meal: Meal; showTime?: boolean }) {
+function MealCard({ meal, showTime, onClick }: { meal: Meal; showTime?: boolean; onClick?: () => void }) {
+  const API_BASE_URL = import.meta.env.VITE_API_URL || 'http://localhost:3000';
+  const imagePath = meal.thumbnailUrl || meal.imageUrl;
+
   return (
-    <div className="bg-white rounded-2xl p-4 shadow-sm border border-gray-50 flex items-center space-x-4">
-      <div className="w-14 h-14 rounded-xl bg-gray-100 overflow-hidden flex-shrink-0">
-        {meal.imageUrl ? (
-          <img src={`http://localhost:3000${meal.imageUrl}`} alt="Meal" className="w-full h-full object-cover" />
+    <div 
+      onClick={onClick}
+      className={`bg-white rounded-2xl p-4 shadow-sm border border-gray-50 flex items-center space-x-4 ${onClick ? 'cursor-pointer hover:bg-gray-50 transition-colors' : ''}`}
+    >
+      <div className="w-14 h-14 rounded-xl bg-gray-100 flex items-center justify-center flex-shrink-0">
+        {imagePath ? (
+          <img src={`${API_BASE_URL}${imagePath}`} alt="Meal" className="w-12 h-12 object-cover rounded-2xl border border-gray-200 opacity-90 saturate-50" />
         ) : (
           <div className="w-full h-full flex items-center justify-center text-gray-300 text-2xl">🍽️</div>
         )}
       </div>
       <div className="flex-1 min-w-0">
         <div className="flex justify-between items-start mb-0.5">
-          <span className="font-bold text-gray-900 line-clamp-1 text-sm">{meal.recognizedText || 'Manual Entry'}</span>
+          <span className="font-bold text-gray-900 line-clamp-1 text-sm">{meal.title || meal.recognizedText || 'Manual Entry'}</span>
           <span className="font-black text-indigo-600 text-sm ml-2 flex-shrink-0">{meal.calories} kcal</span>
         </div>
+
         {showTime && (
           <div className="text-xs text-gray-400 mb-1">
             {format(parseISO(meal.loggedAt), 'h:mm a')}
           </div>
         )}
-        <div className="flex space-x-3">
-          <span className="text-xs text-gray-500"><span className="font-bold text-gray-700">{meal.protein ?? 0}g</span> P</span>
-          <span className="text-xs text-gray-500"><span className="font-bold text-gray-700">{meal.fat ?? 0}g</span> F</span>
-          <span className="text-xs text-gray-500"><span className="font-bold text-gray-700">{meal.carbs ?? 0}g</span> C</span>
+        <div className="flex space-x-2 mt-1">
+          <span className="text-[11px] text-indigo-600 bg-indigo-50 px-2 py-0.5 rounded-md font-medium"><span className="font-bold text-indigo-900">{meal.protein ?? 0}g</span> P</span>
+          <span className="text-[11px] text-amber-600 bg-amber-50 px-2 py-0.5 rounded-md font-medium"><span className="font-bold text-amber-900">{meal.fat ?? 0}g</span> F</span>
+          <span className="text-[11px] text-emerald-600 bg-emerald-50 px-2 py-0.5 rounded-md font-medium"><span className="font-bold text-emerald-900">{meal.carbs ?? 0}g</span> C</span>
         </div>
       </div>
     </div>
@@ -573,9 +629,10 @@ interface MealsModalProps {
   period: 'day' | 'week' | 'month' | 'all-time';
   targetDate: Date;
   onClose: () => void;
+  onSelectMeal: (meal: Meal) => void;
 }
 
-function MealsModal({ meals, period, targetDate, onClose }: MealsModalProps) {
+function MealsModal({ meals, period, targetDate, onClose, onSelectMeal }: MealsModalProps) {
   const DAY_SLOTS = [
     { label: '🌅 Morning', test: (h: number) => h < 12 },
     { label: '☀️ Afternoon', test: (h: number) => h >= 12 && h < 15 },
@@ -642,7 +699,7 @@ function MealsModal({ meals, period, targetDate, onClose }: MealsModalProps) {
             return (
               <div key={slot.label} className="space-y-2">
                 <h3 className="text-sm font-bold text-gray-500 uppercase tracking-wider px-2">{slot.label}</h3>
-                {group.map(meal => <MealCard key={meal.id} meal={meal} showTime />)}
+                {group.map(meal => <MealCard key={meal.id} meal={meal} showTime onClick={() => onSelectMeal(meal)} />)}
               </div>
             );
           })}
@@ -655,7 +712,7 @@ function MealsModal({ meals, period, targetDate, onClose }: MealsModalProps) {
                 <h3 className="text-sm font-bold text-gray-500 uppercase tracking-wider px-2">
                   {format(day, 'EEEE, MMM d')}
                 </h3>
-                {group.map(meal => <MealCard key={meal.id} meal={meal} showTime />)}
+                {group.map(meal => <MealCard key={meal.id} meal={meal} showTime onClick={() => onSelectMeal(meal)} />)}
               </div>
             );
           })}
@@ -797,6 +854,139 @@ export function MacroDonut({ protein, fat, carbs }: { protein: number; fat: numb
             </div>
           </div>
         ))}
+      </div>
+    </div>
+  );
+}
+
+// ---------------------------------------------------------------------------
+// Meal Details Modal
+// ---------------------------------------------------------------------------
+
+interface MealDetailsModalProps {
+  meal: Meal;
+  onClose: () => void;
+  onDelete: () => void;
+}
+
+function MealDetailsModal({ meal, onClose, onDelete }: MealDetailsModalProps) {
+  const [visible, setVisible] = useState(false);
+  const [isDeleting, setIsDeleting] = useState(false);
+
+  useEffect(() => {
+    const id = requestAnimationFrame(() => setVisible(true));
+    return () => cancelAnimationFrame(id);
+  }, []);
+
+  const handleClose = () => {
+    setVisible(false);
+    setTimeout(onClose, 320);
+  };
+
+  const handleDelete = async () => {
+    if (!confirm('Are you sure you want to delete this meal?')) return;
+    setIsDeleting(true);
+    try {
+      await deleteMeal(meal.id);
+      handleClose();
+      setTimeout(onDelete, 320); // allow animation to finish before updating dashboard
+    } catch (e) {
+      console.error(e);
+      alert('Failed to delete meal');
+    } finally {
+      setIsDeleting(false);
+    }
+  };
+
+  return (
+    <div
+      className="fixed inset-0 z-[100] flex flex-col"
+      style={{
+        backgroundColor: visible ? 'rgba(0,0,0,0.6)' : 'rgba(0,0,0,0)',
+        transition: 'background-color 0.3s ease',
+      }}
+    >
+      <div 
+        className="absolute inset-0 z-[-1]" 
+        onClick={handleClose} 
+      />
+      <div className="flex items-center justify-between px-4 py-4 backdrop-blur-md">
+        <button 
+          onClick={handleClose}
+          className="text-white hover:bg-white/20 p-2 rounded-full transition-colors"
+        >
+          <X size={24} />
+        </button>
+        <h2 className="text-white font-bold">Meal Details</h2>
+        <div className="w-10"></div>
+      </div>
+      
+      <div 
+        className="flex-1 bg-white rounded-t-[2rem] p-6 flex flex-col overflow-y-auto"
+        style={{
+          transform: visible ? 'translateY(0)' : 'translateY(100%)',
+          transition: 'transform 0.3s cubic-bezier(0.16, 1, 0.3, 1)'
+        }}
+      >
+        {/* Image (if any) */}
+        <div className="w-32 h-32 rounded-3xl bg-gray-100 border border-gray-200 mx-auto flex items-center justify-center mb-6 overflow-hidden flex-shrink-0 shadow-inner">
+          {(meal.imageUrl || meal.thumbnailUrl) ? (
+            <img 
+              src={`${import.meta.env.VITE_API_URL || 'http://localhost:3000'}${meal.imageUrl || meal.thumbnailUrl}`} 
+              alt="Meal" 
+              className="w-full h-full object-cover saturate-50" 
+            />
+          ) : (
+            <span className="text-5xl opacity-50">🍽️</span>
+          )}
+        </div>
+
+        <div className="text-center mb-6">
+          <h1 className="text-2xl font-black text-gray-900 leading-tight">
+            {meal.title || meal.recognizedText || 'Manual Entry'}
+          </h1>
+          <p className="text-gray-500 font-medium mt-1">
+            {format(parseISO(meal.loggedAt), 'h:mm a, MMM d')}
+          </p>
+        </div>
+
+        <div className="bg-indigo-50 border border-indigo-100 rounded-3xl p-5 text-center mb-6">
+          <span className="block text-sm font-bold text-indigo-900/60 uppercase tracking-wider mb-1">Calories</span>
+          <span className="text-5xl font-black text-indigo-600">{meal.calories}</span>
+        </div>
+
+        <div className="grid grid-cols-3 gap-3 mb-6">
+          <div className="bg-blue-50 rounded-2xl p-4 flex flex-col items-center justify-center">
+            <span className="text-xs font-bold text-blue-900/50 uppercase tracking-widest mb-1">Protein</span>
+            <span className="text-xl font-black text-gray-900">{meal.protein ?? 0}g</span>
+          </div>
+          <div className="bg-amber-50 rounded-2xl p-4 flex flex-col items-center justify-center">
+            <span className="text-xs font-bold text-amber-900/50 uppercase tracking-widest mb-1">Fat</span>
+            <span className="text-xl font-black text-gray-900">{meal.fat ?? 0}g</span>
+          </div>
+          <div className="bg-emerald-50 rounded-2xl p-4 flex flex-col items-center justify-center">
+            <span className="text-xs font-bold text-emerald-900/50 uppercase tracking-widest mb-1">Carbs</span>
+            <span className="text-xl font-black text-gray-900">{meal.carbs ?? 0}g</span>
+          </div>
+        </div>
+
+        <div className="bg-gray-50 rounded-3xl p-6 border border-gray-100 mb-8 flex-1">
+          <h3 className="font-bold text-sm text-gray-900 uppercase tracking-wide mb-3 flex items-center space-x-2">
+            <Bot size={18} className="text-indigo-500" />
+            <span>AI Comments</span>
+          </h3>
+          <p className="text-sm text-gray-600 leading-relaxed">
+            {meal.recognizedText || <span className="italic text-gray-400">No additional details available.</span>}
+          </p>
+        </div>
+
+        <button
+          disabled={isDeleting}
+          onClick={handleDelete}
+          className="w-full bg-red-50 hover:bg-red-100 text-red-600 font-bold py-4 rounded-2xl transition-colors disabled:opacity-50"
+        >
+          {isDeleting ? <Loader2 className="w-5 h-5 animate-spin mx-auto" /> : 'Delete Meal'}
+        </button>
       </div>
     </div>
   );

@@ -26,9 +26,9 @@ export const getProfile = async (req: AuthRequest, res: Response, next: NextFunc
       name: user.name,
       timezone: user.timezone,
       targetCalories: user.targetCalories,
-      targetProtein: user.targetProtein,
-      targetFat: user.targetFat,
-      targetCarbs: user.targetCarbs,
+      targetProteinPct: user.targetProteinPct,
+      targetFatPct: user.targetFatPct,
+      targetCarbsPct: user.targetCarbsPct,
       latestWeight: user.weightLogs.length > 0 ? user.weightLogs[0].weight : null,
     });
   } catch (error) {
@@ -41,7 +41,16 @@ export const updateProfile = async (req: AuthRequest, res: Response, next: NextF
     const userId = req.user?.id;
     if (!userId) return next(new AppError('Unauthorized', 401));
 
-    const { name, timezone, targetCalories, targetProtein, targetFat, targetCarbs } = req.body;
+    const { name, timezone, targetCalories, targetProteinPct, targetFatPct, targetCarbsPct } = req.body;
+
+    // Validate: if all three macro pct fields are present, they must sum to 100
+    const hasPct = targetProteinPct !== undefined && targetFatPct !== undefined && targetCarbsPct !== undefined;
+    if (hasPct) {
+      const sum = Number(targetProteinPct) + Number(targetFatPct) + Number(targetCarbsPct);
+      if (Math.abs(sum - 100) > 0.01) {
+        return next(new AppError('Total macro percentages must equal 100%', 400));
+      }
+    }
 
     const user = await prisma.user.update({
       where: { id: userId },
@@ -49,9 +58,9 @@ export const updateProfile = async (req: AuthRequest, res: Response, next: NextF
         name: name !== undefined ? String(name) : undefined,
         timezone: timezone !== undefined ? String(timezone) : undefined,
         targetCalories: targetCalories !== undefined ? Number(targetCalories) : undefined,
-        targetProtein: targetProtein !== undefined ? Number(targetProtein) : undefined,
-        targetFat: targetFat !== undefined ? Number(targetFat) : undefined,
-        targetCarbs: targetCarbs !== undefined ? Number(targetCarbs) : undefined,
+        targetProteinPct: targetProteinPct !== undefined ? Number(targetProteinPct) : undefined,
+        targetFatPct: targetFatPct !== undefined ? Number(targetFatPct) : undefined,
+        targetCarbsPct: targetCarbsPct !== undefined ? Number(targetCarbsPct) : undefined,
       }
     });
 

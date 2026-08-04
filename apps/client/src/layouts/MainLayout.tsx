@@ -58,7 +58,7 @@ export default function MainLayout({ onLogout: _onLogout }: MainLayoutProps) {
         </Link>
 
         {/* Floating Capture Button (Center) */}
-        <div className="relative -top-6">
+        <div className="absolute left-1/2 -translate-x-1/2 -top-6">
           <button 
             onClick={handleCaptureClick}
             disabled={isUploading}

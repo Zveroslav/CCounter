@@ -6,9 +6,9 @@ export interface UserProfile {
   name?: string;
   timezone: string;
   targetCalories: number;
-  targetProtein: number;
-  targetFat: number;
-  targetCarbs: number;
+  targetProteinPct: number;
+  targetFatPct: number;
+  targetCarbsPct: number;
   latestWeight?: number;
 }
 

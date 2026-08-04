@@ -12,9 +12,9 @@ model User {
   name            String?
   timezone        String            @default("UTC")
   targetCalories  Int               @default(2000)
-  targetProtein   Float             @default(150)
-  targetCarbs     Float             @default(200)
-  targetFat       Float             @default(65)
+  targetProteinPct Float            @default(30)
+  targetCarbsPct   Float            @default(40)
+  targetFatPct     Float            @default(30)
   createdAt       DateTime          @default(now())
   updatedAt       DateTime          @updatedAt
   weightLogs      WeightLog[]

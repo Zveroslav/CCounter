@@ -25,7 +25,17 @@ export default function Dashboard() {
   const [isLoading, setIsLoading] = useState(true);
   const [showMealsModal, setShowMealsModal] = useState(false);
   const [showChatModal, setShowChatModal] = useState(false);
+  const [activeAlert, setActiveAlert] = useState<string | null>(null);
   const scrollRef = useRef<HTMLDivElement>(null);
+
+  // Close alert tooltip on outside click
+  useEffect(() => {
+    const handleClickOutside = () => {
+      if (activeAlert) setActiveAlert(null);
+    };
+    document.addEventListener('click', handleClickOutside);
+    return () => document.removeEventListener('click', handleClickOutside);
+  }, [activeAlert]);
 
   // Load Profile on mount for goals
   useEffect(() => {
@@ -156,7 +166,10 @@ export default function Dashboard() {
           {['day', 'week', 'month', 'all-time'].map((p) => (
             <button
               key={p}
-              onClick={() => setPeriod(p as Period)}
+              onClick={() => {
+                setPeriod(p as Period);
+                setTargetDate(new Date());
+              }}
               className={`px-4 py-2 rounded-full text-sm font-semibold whitespace-nowrap transition-colors ${period === p
                 ? 'bg-indigo-600 text-white shadow-md'
                 : 'bg-gray-100 text-gray-600 hover:bg-gray-200'
@@ -190,20 +203,41 @@ export default function Dashboard() {
             )}
 
             {period === 'day' && (
-              <div className="bg-white rounded-3xl p-5 shadow-sm border border-gray-50 space-y-4">
+              <div className="bg-white rounded-3xl p-5 shadow-sm border border-gray-50 space-y-4 relative">
+                
+                {/* Calories Overage Alert */}
+                {totalCaloriesToday > targetCalories && (
+                  <div className="absolute top-4 right-4 z-10">
+                    <button 
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        setActiveAlert(activeAlert === 'Calories' ? null : 'Calories');
+                      }} 
+                      className="w-5 h-5 bg-amber-400 rounded-full flex items-center justify-center text-black font-bold text-xs shadow-sm"
+                    >
+                      !
+                    </button>
+                    {activeAlert === 'Calories' && (
+                      <div className="absolute top-full right-0 mt-1 w-40 bg-gray-800 text-white text-xs p-2 rounded-lg shadow-lg z-20 text-left pointer-events-none">
+                        You are over your calorie limit by {Math.round(((totalCaloriesToday - targetCalories) / targetCalories) * 100)}%.
+                        <div className="absolute -top-1 right-2 w-2 h-2 bg-gray-800 transform rotate-45"></div>
+                      </div>
+                    )}
+                  </div>
+                )}
 
                 {/* Calories row */}
-                <div className="flex justify-between items-end">
+                <div className="flex justify-between items-end pr-6">
                   <div>
-                    <div className="text-xs font-bold text-gray-400 uppercase tracking-wider">Calories</div>
+                    <div className="text-xs font-bold text-gray-400 uppercase tracking-wider">Consumed</div>
                     <div className="text-4xl font-black text-indigo-600 leading-none mt-0.5">
-                      {remaining > 0 ? remaining : 0}
+                      {totalCaloriesToday}
                     </div>
-                    <div className="text-xs text-gray-400 mt-0.5">of {targetCalories} kcal left</div>
+                    <div className="text-xs text-gray-400 mt-0.5">of {targetCalories} kcal</div>
                   </div>
                   <div className="text-right">
-                    <div className="text-xs text-gray-400">consumed</div>
-                    <div className="text-lg font-bold text-gray-700">{totalCaloriesToday}</div>
+                    <div className="text-xs text-gray-400">left</div>
+                    <div className="text-lg font-bold text-gray-700">{remaining > 0 ? remaining : 0}</div>
                   </div>
                 </div>
 
@@ -220,24 +254,70 @@ export default function Dashboard() {
 
                 {/* Macros 3-col */}
                 {(() => {
-                  const macroTotal = totalProteinToday + totalFatToday + totalCarbsToday;
-                  const pct = (v: number) => macroTotal > 0 ? Math.round((v / macroTotal) * 100) : 0;
-                  return (
-                    <div className="grid grid-cols-3 gap-2">
-                      {[
-                        { label: 'Protein', grams: totalProteinToday, color: 'text-indigo-600', bg: 'bg-indigo-50', bar: 'bg-indigo-500' },
-                        { label: 'Fat', grams: totalFatToday, color: 'text-amber-600', bg: 'bg-amber-50', bar: 'bg-amber-400' },
-                        { label: 'Carbs', grams: totalCarbsToday, color: 'text-emerald-600', bg: 'bg-emerald-50', bar: 'bg-emerald-500' },
-                      ].map(m => (
-                        <div key={m.label} className={`${m.bg} rounded-2xl p-3 flex flex-col gap-1`}>
-                          <div className="text-xs font-semibold text-gray-500">{m.label}</div>
-                          <div className={`text-xl font-black ${m.color} leading-none`}>{Math.round(m.grams)}g</div>
-                          <div className="text-xs text-gray-400">{pct(m.grams)}% of macros</div>
-                          <div className="w-full bg-white/60 rounded-full h-1.5 mt-1 overflow-hidden">
-                            <div className={`${m.bar} h-1.5 rounded-full`} style={{ width: `${pct(m.grams)}%` }} />
-                          </div>
+                  const pCals = totalProteinToday * 4;
+                  const fCals = totalFatToday * 9;
+                  const cCals = totalCarbsToday * 4;
+                  const totalCals = pCals + fCals + cCals;
+                  const pPercent = totalCals > 0 ? Math.round((pCals / totalCals) * 100) : 0;
+                  const fPercent = totalCals > 0 ? Math.round((fCals / totalCals) * 100) : 0;
+                  const cPercent = totalCals > 0 ? Math.round((cCals / totalCals) * 100) : 0;
+                  
+                      const targetP = profile ? Math.round((profile.targetCalories * ((profile.targetProteinPct ?? 30) / 100)) / 4) : 150;
+                      const targetF = profile ? Math.round((profile.targetCalories * ((profile.targetFatPct ?? 30) / 100)) / 9) : 65;
+                      const targetC = profile ? Math.round((profile.targetCalories * ((profile.targetCarbsPct ?? 40) / 100)) / 4) : 200;
+
+                      return (
+                    <div className="space-y-4">
+                      <div className="grid grid-cols-3 gap-2">
+                        {[
+                          { label: 'Protein', grams: totalProteinToday, target: targetP, color: 'text-indigo-600', bg: 'bg-indigo-50' },
+                          { label: 'Fat', grams: totalFatToday, target: targetF, color: 'text-amber-600', bg: 'bg-amber-50' },
+                          { label: 'Carbs', grams: totalCarbsToday, target: targetC, color: 'text-emerald-600', bg: 'bg-emerald-50' },
+                        ].map(m => {
+                          const isOverLimit = m.target > 0 && Math.round(m.grams) > m.target;
+                          const overagePct = m.target > 0 ? Math.round(((m.grams - m.target) / m.target) * 100) : 0;
+                          
+                          return (
+                            <div key={m.label} className={`${m.bg} rounded-2xl p-3 flex flex-col gap-1 items-center text-center relative`}>
+                              {isOverLimit && (
+                                <div className="absolute top-1.5 right-1.5 z-10">
+                                  <button 
+                                    onClick={(e) => {
+                                      e.stopPropagation();
+                                      setActiveAlert(activeAlert === m.label ? null : m.label);
+                                    }} 
+                                    className="w-4 h-4 bg-amber-400 rounded-full flex items-center justify-center text-black font-bold text-[10px] shadow-sm"
+                                  >
+                                    !
+                                  </button>
+                                  {activeAlert === m.label && (
+                                    <div className="absolute top-full right-0 mt-1 w-32 bg-gray-800 text-white text-xs p-2 rounded-lg shadow-lg z-20 text-left pointer-events-none">
+                                      You are over your {m.label.toLowerCase()} limit by {overagePct}%.
+                                      <div className="absolute -top-1 right-1 w-2 h-2 bg-gray-800 transform rotate-45"></div>
+                                    </div>
+                                  )}
+                                </div>
+                              )}
+                              <div className="text-xs font-semibold text-gray-500">{m.label}</div>
+                              <div className={`text-xl font-black ${m.color} leading-none`}>{Math.round(m.grams)}g</div>
+                            </div>
+                          );
+                        })}
+                      </div>
+
+                      {/* Unified Proportional Progress Bar */}
+                      <div className="bg-gray-50 rounded-xl p-4 border border-gray-100 space-y-3">
+                        <div className="flex justify-between text-xs font-semibold uppercase tracking-wider">
+                          <span className="text-indigo-500">{pPercent}%</span>
+                          <span className="text-amber-500">{fPercent}%</span>
+                          <span className="text-emerald-500">{cPercent}%</span>
                         </div>
-                      ))}
+                        <div className="w-full h-3 rounded-full bg-gray-200 flex overflow-hidden">
+                          <div style={{ width: `${pPercent}%` }} className="h-full bg-indigo-500 transition-all duration-300"></div>
+                          <div style={{ width: `${fPercent}%` }} className="h-full bg-amber-400 transition-all duration-300"></div>
+                          <div style={{ width: `${cPercent}%` }} className="h-full bg-emerald-500 transition-all duration-300"></div>
+                        </div>
+                      </div>
                     </div>
                   );
                 })()}

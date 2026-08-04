@@ -177,34 +177,69 @@ export default function RefinementView() {
         </div>
 
         <div className="grid grid-cols-3 gap-4">
-          <div className="bg-gray-50 rounded-xl p-4 text-center border border-gray-100">
-            <label className="block text-xs font-semibold text-gray-500 mb-1 uppercase tracking-wider">Protein (g)</label>
-            <input 
-              type="number" 
-              value={protein} 
-              onChange={e => setProtein(Number(e.target.value))}
-              className="text-xl font-bold text-gray-900 bg-transparent text-center w-full focus:outline-none"
-            />
+          <div className="bg-blue-50 rounded-xl p-4 flex flex-col items-center justify-center border border-blue-100">
+            <label className="block text-xs font-semibold text-blue-600 mb-1 uppercase tracking-wider">Protein</label>
+            <div className="flex items-baseline justify-center">
+              <input 
+                type="number" 
+                value={protein} 
+                onChange={e => setProtein(Number(e.target.value))}
+                className="text-2xl font-bold text-gray-900 bg-transparent text-right w-10 pr-0.5 focus:outline-none"
+              />
+              <span className="text-sm font-bold text-gray-900">(g)</span>
+            </div>
           </div>
-          <div className="bg-gray-50 rounded-xl p-4 text-center border border-gray-100">
-            <label className="block text-xs font-semibold text-gray-500 mb-1 uppercase tracking-wider">Fat (g)</label>
-            <input 
-              type="number" 
-              value={fat} 
-              onChange={e => setFat(Number(e.target.value))}
-              className="text-xl font-bold text-gray-900 bg-transparent text-center w-full focus:outline-none"
-            />
+          <div className="bg-amber-50 rounded-xl p-4 flex flex-col items-center justify-center border border-amber-100">
+            <label className="block text-xs font-semibold text-amber-600 mb-1 uppercase tracking-wider">Fat</label>
+            <div className="flex items-baseline justify-center">
+              <input 
+                type="number" 
+                value={fat} 
+                onChange={e => setFat(Number(e.target.value))}
+                className="text-2xl font-bold text-gray-900 bg-transparent text-right w-10 pr-0.5 focus:outline-none"
+              />
+              <span className="text-sm font-bold text-gray-900">(g)</span>
+            </div>
           </div>
-          <div className="bg-gray-50 rounded-xl p-4 text-center border border-gray-100">
-            <label className="block text-xs font-semibold text-gray-500 mb-1 uppercase tracking-wider">Carbs (g)</label>
-            <input 
-              type="number" 
-              value={carbs} 
-              onChange={e => setCarbs(Number(e.target.value))}
-              className="text-xl font-bold text-gray-900 bg-transparent text-center w-full focus:outline-none"
-            />
+          <div className="bg-emerald-50 rounded-xl p-4 flex flex-col items-center justify-center border border-emerald-100">
+            <label className="block text-xs font-semibold text-emerald-600 mb-1 uppercase tracking-wider">Carbs</label>
+            <div className="flex items-baseline justify-center">
+              <input 
+                type="number" 
+                value={carbs} 
+                onChange={e => setCarbs(Number(e.target.value))}
+                className="text-2xl font-bold text-gray-900 bg-transparent text-right w-10 pr-0.5 focus:outline-none"
+              />
+              <span className="text-sm font-bold text-gray-900">(g)</span>
+            </div>
           </div>
         </div>
+
+        {/* Macros Progress Bar */}
+        {(() => {
+          const pCals = (protein || 0) * 4;
+          const fCals = (fat || 0) * 9;
+          const cCals = (carbs || 0) * 4;
+          const totalCals = pCals + fCals + cCals;
+          const pPercent = totalCals > 0 ? Math.round((pCals / totalCals) * 100) : 0;
+          const fPercent = totalCals > 0 ? Math.round((fCals / totalCals) * 100) : 0;
+          const cPercent = totalCals > 0 ? Math.round((cCals / totalCals) * 100) : 0;
+          
+          return (
+            <div className="bg-gray-50 rounded-xl p-4 border border-gray-100 space-y-3">
+              <div className="flex justify-between text-xs font-semibold uppercase tracking-wider">
+                <span className="text-blue-500">{pPercent}%</span>
+                <span className="text-amber-500">{fPercent}%</span>
+                <span className="text-emerald-500">{cPercent}%</span>
+              </div>
+              <div className="w-full h-3 rounded-full bg-gray-200 flex overflow-hidden">
+                <div style={{ width: `${pPercent}%` }} className="h-full bg-blue-500 transition-all duration-300"></div>
+                <div style={{ width: `${fPercent}%` }} className="h-full bg-amber-500 transition-all duration-300"></div>
+                <div style={{ width: `${cPercent}%` }} className="h-full bg-emerald-500 transition-all duration-300"></div>
+              </div>
+            </div>
+          );
+        })()}
 
         <div className="space-y-2">
           <label className="block text-sm font-semibold text-gray-700">Health Warnings & Comments</label>

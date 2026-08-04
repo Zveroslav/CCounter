@@ -74,11 +74,11 @@ components:
           type: string
         targetCalories:
           type: integer
-        targetProtein:
+        targetProteinPct:
           type: number
-        targetFat:
+        targetFatPct:
           type: number
-        targetCarbs:
+        targetCarbsPct:
           type: number
         latestWeight:
           type: number
@@ -113,11 +113,11 @@ paths:
                   type: string
                 targetCalories:
                   type: integer
-                targetProtein:
+                targetProteinPct:
                   type: number
-                targetFat:
+                targetFatPct:
                   type: number
-                targetCarbs:
+                targetCarbsPct:
                   type: number
       responses:
         '200':

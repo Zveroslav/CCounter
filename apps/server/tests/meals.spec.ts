@@ -125,6 +125,32 @@ describe('Meals Routes', () => {
     if (fs.existsSync(tempImg)) fs.unlinkSync(tempImg);
   });
 
+  it('should handle custom prompts containing single quotes, double quotes, and special characters', async () => {
+    process.env.CLI_COMMAND_TEMPLATE = "echo '{{PROMPT}}' > /dev/null && echo '{\"calories\": 800, \"protein\": 50, \"carbs\": 70, \"fat\": 35, \"health_warnings\": \"Handled special prompt\"}'";
+
+    const tempImg = path.join(__dirname, 'temp_reanalyze_quotes.jpg');
+    fs.writeFileSync(tempImg, 'image content');
+
+    const meal = await prisma.meal.create({
+      data: {
+        userId: testUserId,
+        loggedAt: new Date(),
+        calories: 500,
+        imageUrl: tempImg,
+      }
+    });
+
+    const res = await request(app)
+      .post(`/api/meals/${meal.id}/reanalyze`)
+      .set('Authorization', `Bearer ${validToken}`)
+      .send({ prompt: "Добавь 50g сыра 'Гауда' & 100% $5 соус" });
+
+    expect(res.status).toBe(200);
+    expect(res.body.meal.calories).toBe(800);
+
+    if (fs.existsSync(tempImg)) fs.unlinkSync(tempImg);
+  });
+
   it('should delete (cancel) a meal and clean up its image file', async () => {
     const tempImg = path.join(__dirname, 'temp_delete.jpg');
     fs.writeFileSync(tempImg, 'image content');

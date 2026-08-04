@@ -56,9 +56,12 @@ export const recognizeMealFromImage = async (imagePath: string, customPrompt?: s
     throw new Error('CLI_COMMAND_TEMPLATE is not set in environment variables');
   }
 
+  const escapedPrompt = prompt.replace(/'/g, "'\\''");
+  const escapedImagePath = imagePath.replace(/'/g, "'\\''");
+
   const command = template
-    .replace('{{PROMPT}}', prompt)
-    .replace('{{IMAGE_PATH}}', imagePath);
+    .replace('{{PROMPT}}', () => escapedPrompt)
+    .replace('{{IMAGE_PATH}}', () => escapedImagePath);
 
   try {
     console.log('[agy] recognizeMeal: executing...');

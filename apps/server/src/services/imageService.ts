@@ -14,6 +14,7 @@ export const generateAndSaveThumbnail = async (userId: string, imagePath: string
   const thumbnailPath = path.join(thumbnailDir, fileName);
 
   await sharp(imagePath)
+    .rotate()
     .resize(120, 120, {
       fit: 'cover',
       position: 'center',

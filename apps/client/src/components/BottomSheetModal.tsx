@@ -57,7 +57,7 @@ export default function BottomSheetModal({
 
       {/* Modal Body */}
       <div
-        className={`flex-1 ${bgClass} rounded-t-[2rem] flex flex-col overflow-hidden`}
+        className={`flex-1 ${bgClass} rounded-t-[2rem] flex flex-col overflow-hidden pb-8`}
         style={{
           transform: visible ? 'translateY(0)' : 'translateY(100%)',
           transition: 'transform 0.3s cubic-bezier(0.16, 1, 0.3, 1)',

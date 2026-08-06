@@ -12,7 +12,7 @@ import AllTimeView from './views/AllTimeView';
 import MealsModal from './components/MealsModal';
 import ChatModal from './components/ChatModal';
 import MealDetailsModal from './components/MealDetailsModal';
-import MealCard from './components/MealCard';
+import MealPreview from './components/MealPreview';
 
 type Period = 'day' | 'week' | 'month' | 'all-time';
 
@@ -247,15 +247,12 @@ export default function Dashboard() {
                 />
                 
                 {/* Meals List for the day */}
-                {data && data.meals.length > 0 && (
-                  <div className="space-y-4">
-                    <h2 className="text-xl font-bold text-gray-900 px-2">Meals Today</h2>
-                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                      {data.meals.map(meal => (
-                        <MealCard key={meal.id} meal={meal} onClick={() => setSelectedMeal(meal)} />
-                      ))}
-                    </div>
-                  </div>
+                {data && (
+                  <MealPreview 
+                    meals={data.meals} 
+                    onShowAll={() => setShowMealsModal(true)} 
+                    onSelectMeal={setSelectedMeal} 
+                  />
                 )}
               </>
             )}

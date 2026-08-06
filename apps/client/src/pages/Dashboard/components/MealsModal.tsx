@@ -13,17 +13,17 @@ interface MealsModalProps {
 
 export default function MealsModal({ meals, period, targetDate, onClose, onSelectMeal }: MealsModalProps) {
   const DAY_SLOTS = [
-    { label: 'Breakfast', test: (h: number) => h >= 5 && h < 11 },
-    { label: 'Lunch', test: (h: number) => h >= 11 && h < 16 },
-    { label: 'Dinner', test: (h: number) => h >= 16 && h < 21 },
     { label: 'Snacks / Late Night', test: (h: number) => h >= 21 || h < 5 },
+    { label: 'Dinner', test: (h: number) => h >= 16 && h < 21 },
+    { label: 'Lunch', test: (h: number) => h >= 11 && h < 16 },
+    { label: 'Breakfast', test: (h: number) => h >= 5 && h < 11 },
   ];
 
   const weekDays = (() => {
     if (period !== 'week') return [];
     const start = startOfWeek(targetDate, { weekStartsOn: 1 });
     const end = endOfWeek(targetDate, { weekStartsOn: 1 });
-    return eachDayOfInterval({ start, end });
+    return eachDayOfInterval({ start, end }).reverse();
   })();
   return (
     <BottomSheetModal

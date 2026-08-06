@@ -8,7 +8,8 @@ interface MealPreviewProps {
 }
 
 export default function MealPreview({ meals, onShowAll, onSelectMeal }: MealPreviewProps) {
-  const preview = meals.slice(0, 4);
+  const sortedMeals = [...meals].sort((a, b) => new Date(b.loggedAt).getTime() - new Date(a.loggedAt).getTime());
+  const preview = sortedMeals.slice(0, 4);
 
   return (
     <div className="space-y-2">

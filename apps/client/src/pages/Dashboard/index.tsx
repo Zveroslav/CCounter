@@ -1,6 +1,6 @@
 import { useState, useEffect, useMemo, useRef } from 'react';
 import { Loader2, ChevronLeft, ChevronRight, Bot } from 'lucide-react';
-import { format, startOfWeek, endOfWeek, subDays, addDays, subWeeks, addWeeks, subMonths, addMonths, eachDayOfInterval, eachWeekOfInterval, isSameDay, parseISO } from 'date-fns';
+import { format, startOfWeek, endOfWeek, subDays, addDays, subWeeks, addWeeks, subMonths, addMonths, eachDayOfInterval, eachWeekOfInterval, parseISO } from 'date-fns';
 import { getJournalData, saveUserNote, type JournalData, type Meal } from '../../api/journal';
 import { getProfile, type UserProfile } from '../../api/user';
 
@@ -112,11 +112,12 @@ export default function Dashboard() {
       const days = eachDayOfInterval({ start, end });
 
       return days.map(day => {
-        const summary = data.dailySummaries.find(s => isSameDay(parseISO(s.date), day));
+        const dateStr = format(day, 'yyyy-MM-dd');
+        const summary = data.dailySummaries.find(s => s.date.startsWith(dateStr));
         const isEmpty = !summary || summary.totalCalories === 0;
-        const p = isEmpty ? 0 : summary!.totalProtein;
-        const f = isEmpty ? 0 : summary!.totalFat;
-        const c = isEmpty ? 0 : summary!.totalCarbs;
+        const p = isEmpty ? 0 : summary.totalProtein;
+        const f = isEmpty ? 0 : summary.totalFat;
+        const c = isEmpty ? 0 : summary.totalCarbs;
         return {
           name: format(day, 'E'),
           calories: summary ? summary.totalCalories : 0,
@@ -139,10 +140,12 @@ export default function Dashboard() {
 
       return weeks.map((weekStart, idx) => {
         const weekEnd = endOfWeek(weekStart, { weekStartsOn: 1 });
+        const startStr = format(weekStart, 'yyyy-MM-dd');
+        const endStr = format(weekEnd, 'yyyy-MM-dd');
         
         const summaries = data.dailySummaries.filter(s => {
-          const date = parseISO(s.date);
-          return date >= weekStart && date <= weekEnd;
+          const dateStr = s.date.split('T')[0];
+          return dateStr >= startStr && dateStr <= endStr;
         });
 
         const totalCalories = summaries.reduce((sum, s) => sum + s.totalCalories, 0);

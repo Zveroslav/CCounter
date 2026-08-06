@@ -29,12 +29,19 @@ export interface PeriodSummary {
   comment?: string;
 }
 
+export interface WeightLog {
+  id: string;
+  weight: number;
+  date: string;
+}
+
 export interface JournalData {
   period: string;
   startDate: string;
   endDate: string;
   meals: Meal[];
   dailySummaries: DailySummary[];
+  weightLogs: WeightLog[];
   periodSummary?: PeriodSummary | null;
 }
 

@@ -17,7 +17,7 @@ async function seed() {
   const user = users[0];
 
   const endDate = dayjs().startOf('day').subtract(1, 'day'); // yesterday
-  const startDate = endDate.subtract(60, 'day'); // 2 months ago
+  const startDate = endDate.subtract(365, 'day'); // 1 year ago
 
   let currentWeight = 85.0;
 

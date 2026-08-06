@@ -52,6 +52,14 @@ export const getJournalData = async (userId: string, period: string, dateQuery?:
     orderBy: { date: 'asc' },
   });
 
+  const weightLogs = await prisma.weightLog.findMany({
+    where: {
+      userId,
+      date: { gte: startDate, lte: endDate },
+    },
+    orderBy: { date: 'asc' },
+  });
+
   let periodSummary = null;
   if (period === 'day') {
     periodSummary = await prisma.dailySummary.findUnique({
@@ -73,6 +81,7 @@ export const getJournalData = async (userId: string, period: string, dateQuery?:
     endDate,
     meals,
     dailySummaries,
+    weightLogs,
     periodSummary,
   };
 };

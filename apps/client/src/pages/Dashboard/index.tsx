@@ -276,7 +276,7 @@ export default function Dashboard() {
             )}
 
             {period === 'all-time' && (
-              <AllTimeView />
+              <AllTimeView data={data} profile={profile} />
             )}
 
             {/* User Journal / Notes (Shared across all periods except all-time might have a different logic, but it's shared originally) */}

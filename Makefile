@@ -15,10 +15,7 @@ build:
 	@cd apps/client && npm run build
 	@cd apps/server && npm run build
 
-start-prod:
-	@echo "Starting server in production mode..."
-	@cd apps/server && NODE_ENV=production npm run start
-
+start-prod: pm2-start
 pm2-start:
 	@echo "Starting app with PM2..."
 	@pm2 start ecosystem.config.js

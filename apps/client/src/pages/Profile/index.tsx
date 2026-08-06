@@ -3,6 +3,7 @@ import { getProfile, updateProfile, logWeight, type UserProfile } from '../../ap
 import { Loader2, Save, LogOut } from 'lucide-react';
 import PersonalInfo from './components/PersonalInfo';
 import DailyGoals from './components/DailyGoals';
+import Button from '../../components/ui/Button';
 
 interface ProfileProps {
   onLogout: () => void;
@@ -125,14 +126,15 @@ export default function Profile({ onLogout }: ProfileProps) {
           />
 
           {isMacroValid ? (
-            <button
+            <Button
               type="submit"
-              disabled={isSaving}
-              className="w-full bg-indigo-600 hover:bg-indigo-700 text-white rounded-xl p-4 font-bold text-lg shadow-lg shadow-indigo-200 transition-all active:scale-[0.98] flex items-center justify-center space-x-2 disabled:opacity-70 disabled:active:scale-100"
+              isLoading={isSaving}
+              className="w-full"
+              size="lg"
+              icon={<Save size={20} />}
             >
-              {isSaving ? <Loader2 size={20} className="animate-spin" /> : <Save size={20} />}
-              <span>Save Settings</span>
-            </button>
+              Save Settings
+            </Button>
           ) : (
             <div className="w-full bg-red-50 border border-red-200 rounded-xl p-4 font-bold text-lg text-red-600 text-center">
               Total macros must equal 100% (currently {Math.round(macroSum)}%)

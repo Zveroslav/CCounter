@@ -18,6 +18,8 @@ import chatRoutes from './routes/chat';
 import userRoutes from './routes/user';
 import journalRoutes from './routes/journal';
 import { startCronJobs } from './jobs/aggregator';
+import { recoverStuckJobs } from './jobs/queue.service';
+import { queueWorker } from './jobs/queue.worker';
 
 const app = express();
 const port = process.env.PORT || 3000;
@@ -75,6 +77,15 @@ if (process.env.NODE_ENV !== 'test') {
   const PORT = process.env.PORT || 3000;
   const sslKeyPath = process.env.SSL_KEY_PATH;
   const sslCertPath = process.env.SSL_CERT_PATH;
+
+  recoverStuckJobs().catch((err) => console.error('Failed to recover stuck jobs on startup:', err));
+  queueWorker.start();
+
+  const shutdown = () => {
+    queueWorker.stop();
+  };
+  process.on('SIGINT', shutdown);
+  process.on('SIGTERM', shutdown);
 
   if (sslKeyPath && sslCertPath && fs.existsSync(sslKeyPath) && fs.existsSync(sslCertPath)) {
     const options = {

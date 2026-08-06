@@ -16,9 +16,18 @@ export interface JobResult {
   description?: string;
 }
 
+export const JOB_STATUS = {
+  PENDING: 'PENDING',
+  PROCESSING: 'PROCESSING',
+  COMPLETED: 'COMPLETED',
+  FAILED: 'FAILED',
+} as const;
+
+export type JobStatus = typeof JOB_STATUS[keyof typeof JOB_STATUS];
+
 export interface JobStatusResponse {
   jobId: string;
-  status: 'PENDING' | 'COMPLETED' | 'FAILED';
+  status: JobStatus;
   result: JobResult | null;
   mealId: string;
 }

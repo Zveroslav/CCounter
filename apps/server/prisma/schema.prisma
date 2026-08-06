@@ -75,6 +75,7 @@ model WeeklySummary {
   endDate       DateTime
   totalCalories Int      @default(0)
   avgWeight     Float?
+  comment       String?
   userNote      String?
   createdAt     DateTime @default(now())
   updatedAt     DateTime @updatedAt
@@ -90,6 +91,7 @@ model MonthlySummary {
   year          Int
   totalCalories Int      @default(0)
   avgWeight     Float?
+  comment       String?
   userNote      String?
   createdAt     DateTime @default(now())
   updatedAt     DateTime @updatedAt
@@ -97,12 +99,24 @@ model MonthlySummary {
   @@unique([userId, month, year])
 }
 
-model RecognitionJob {
-  id        String   @id @default(uuid())
-  mealId    String?  @unique
-  meal      Meal?    @relation(fields: [mealId], references: [id], onDelete: SetNull)
-  status    String   @default("PENDING") // PENDING, COMPLETED, FAILED
-  result    String?
-  createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
+enum JobStatus {
+  PENDING
+  PROCESSING
+  COMPLETED
+  FAILED
 }
+
+model RecognitionJob {
+  id          String    @id @default(uuid())
+  mealId      String?   @unique
+  meal        Meal?     @relation(fields: [mealId], references: [id], onDelete: SetNull)
+  imagePath   String?
+  status      JobStatus @default(PENDING)
+  attempts    Int       @default(0)
+  maxAttempts Int       @default(3)
+  lastError   String?
+  result      String?
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime  @updatedAt
+}
+

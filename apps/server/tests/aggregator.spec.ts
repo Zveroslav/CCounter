@@ -11,17 +11,46 @@ dayjs.extend(timezone);
 describe('Aggregator Job', () => {
   beforeEach(async () => {
     jest.spyOn(gemini, 'getDailyFeedback').mockResolvedValue('Mocked AI feedback');
-    await prisma.recognitionJob.deleteMany();
-    await prisma.monthlySummary.deleteMany();
-    await prisma.weeklySummary.deleteMany();
-    await prisma.dailySummary.deleteMany();
-    await prisma.meal.deleteMany();
-    await prisma.weightLog.deleteMany();
-    await prisma.user.deleteMany();
+    await prisma.recognitionJob.deleteMany({
+      where: { meal: { user: { email: { in: ['moscow@example.com', 'month_end@example.com'] } } } }
+    });
+    await prisma.monthlySummary.deleteMany({
+      where: { user: { email: { in: ['moscow@example.com', 'month_end@example.com'] } } }
+    });
+    await prisma.weeklySummary.deleteMany({
+      where: { user: { email: { in: ['moscow@example.com', 'month_end@example.com'] } } }
+    });
+    await prisma.dailySummary.deleteMany({
+      where: { user: { email: { in: ['moscow@example.com', 'month_end@example.com'] } } }
+    });
+    await prisma.meal.deleteMany({
+      where: { user: { email: { in: ['moscow@example.com', 'month_end@example.com'] } } }
+    });
+    await prisma.user.deleteMany({
+      where: { email: { in: ['moscow@example.com', 'month_end@example.com'] } }
+    });
     jest.clearAllMocks();
   });
 
   afterAll(async () => {
+    await prisma.recognitionJob.deleteMany({
+      where: { meal: { user: { email: { in: ['moscow@example.com', 'month_end@example.com'] } } } }
+    });
+    await prisma.monthlySummary.deleteMany({
+      where: { user: { email: { in: ['moscow@example.com', 'month_end@example.com'] } } }
+    });
+    await prisma.weeklySummary.deleteMany({
+      where: { user: { email: { in: ['moscow@example.com', 'month_end@example.com'] } } }
+    });
+    await prisma.dailySummary.deleteMany({
+      where: { user: { email: { in: ['moscow@example.com', 'month_end@example.com'] } } }
+    });
+    await prisma.meal.deleteMany({
+      where: { user: { email: { in: ['moscow@example.com', 'month_end@example.com'] } } }
+    });
+    await prisma.user.deleteMany({
+      where: { email: { in: ['moscow@example.com', 'month_end@example.com'] } }
+    });
     await prisma.$disconnect();
   });
 

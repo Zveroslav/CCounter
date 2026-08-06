@@ -47,6 +47,7 @@ export default function PeriodChart({ data, profile, showLegend }: PeriodChartPr
               tickLine={false}
               tick={false}
               width={0}
+              domain={[0, (dataMax: number) => Math.max(dataMax, profile?.targetCalories ? profile.targetCalories : 2000)]}
             />
             <Tooltip
               cursor={false}

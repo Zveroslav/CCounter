@@ -1,4 +1,5 @@
-import { Loader2, Save, Edit3, X } from 'lucide-react';
+import { Save, Edit3, X } from 'lucide-react';
+import Button from '../../../components/ui/Button';
 
 interface RefinementFormProps {
   calories: number;
@@ -116,35 +117,40 @@ export default function RefinementForm({
 
       {/* Action Buttons */}
       <div className="space-y-3 pt-2">
-        <button 
+        <Button 
           type="submit"
-          disabled={isSaving || isCancelling}
-          className="w-full bg-indigo-600 hover:bg-indigo-700 text-white rounded-xl p-4 font-bold text-lg flex items-center justify-center space-x-2 shadow-lg shadow-indigo-200 transition-all active:scale-[0.98] disabled:opacity-75"
+          disabled={isCancelling}
+          isLoading={isSaving}
+          className="w-full"
+          size="lg"
+          icon={<Save size={24} />}
         >
-          {isSaving ? <Loader2 size={24} className="animate-spin" /> : <Save size={24} />}
-          <span>Save to Journal</span>
-        </button>
+          Save to Journal
+        </Button>
 
         <div className="grid grid-cols-2 gap-3">
-          <button
+          <Button
             type="button"
             onClick={onOpenEditModal}
             disabled={isSaving || isCancelling}
-            className="w-full bg-indigo-50 hover:bg-indigo-100 text-indigo-700 rounded-xl p-3.5 font-semibold text-sm flex items-center justify-center space-x-2 transition-all active:scale-[0.98]"
+            variant="secondary"
+            className="w-full"
+            icon={<Edit3 size={18} />}
           >
-            <Edit3 size={18} />
-            <span>Edit / Clarify AI</span>
-          </button>
+            Edit / Clarify AI
+          </Button>
 
-          <button
+          <Button
             type="button"
             onClick={onCancel}
-            disabled={isSaving || isCancelling}
-            className="w-full bg-red-50 hover:bg-red-100 text-red-600 rounded-xl p-3.5 font-semibold text-sm flex items-center justify-center space-x-2 transition-all active:scale-[0.98]"
+            disabled={isSaving}
+            isLoading={isCancelling}
+            variant="danger"
+            className="w-full"
+            icon={<X size={18} />}
           >
-            {isCancelling ? <Loader2 size={18} className="animate-spin" /> : <X size={18} />}
-            <span>Cancel</span>
-          </button>
+            Cancel
+          </Button>
         </div>
       </div>
 

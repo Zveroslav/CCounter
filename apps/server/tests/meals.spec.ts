@@ -5,12 +5,14 @@ import { prisma } from '../src/prisma';
 import path from 'path';
 import fs from 'fs';
 import * as cp from 'child_process';
+import { queueWorker } from '../src/jobs/queue.worker';
 
 describe('Meals Routes', () => {
   let validToken: string;
   let testUserId: string;
 
   beforeAll(async () => {
+    queueWorker.start();
     process.env.CLI_COMMAND_TEMPLATE = "echo '{\"calories\": 500, \"protein\": 30, \"carbs\": 45, \"fat\": 20, \"health_warnings\": \"Contains nuts\"}'";
 
     // Create a test user in SQLite
@@ -25,7 +27,12 @@ describe('Meals Routes', () => {
     validToken = jwt.sign({ id: user.id, email: user.email }, secret);
   });
 
+  beforeEach(() => {
+    process.env.CLI_COMMAND_TEMPLATE = "echo '{\"calories\": 500, \"protein\": 30, \"carbs\": 45, \"fat\": 20, \"health_warnings\": \"Contains nuts\"}'";
+  });
+
   afterAll(async () => {
+    queueWorker.stop();
     // Cleanup DB
     await prisma.recognitionJob.deleteMany({});
     await prisma.meal.deleteMany({});
@@ -82,8 +89,8 @@ describe('Meals Routes', () => {
     const createdMealId = res.body.mealId;
 
     let jobRes;
-    for (let i = 0; i < 5; i++) {
-      await new Promise(r => setTimeout(r, 500));
+    for (let i = 0; i < 15; i++) {
+      await new Promise(r => setTimeout(r, 300));
       jobRes = await request(app)
         .get(`/api/meals/jobs/${res.body.jobId}`)
         .set('Authorization', `Bearer ${validToken}`);

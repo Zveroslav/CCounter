@@ -20,11 +20,13 @@ export interface DailySummary {
   totalProtein: number;
   totalCarbs: number;
   totalFat: number;
+  comment?: string;
 }
 
 export interface PeriodSummary {
   id: string;
   userNote?: string;
+  comment?: string;
 }
 
 export interface JournalData {

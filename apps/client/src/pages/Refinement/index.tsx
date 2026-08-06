@@ -1,7 +1,7 @@
 import { useEffect, useState } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { ArrowLeft } from 'lucide-react';
-import { getJobStatus, updateMeal, deleteMeal, reanalyzeMeal, type JobStatusResponse } from '../../api/meals';
+import { getJobStatus, updateMeal, deleteMeal, reanalyzeMeal, type JobStatusResponse, JOB_STATUS } from '../../api/meals';
 
 import { ErrorView, LoadingView } from './components/StatusViews';
 import RefinementForm from './components/RefinementForm';
@@ -47,7 +47,7 @@ export default function Refinement() {
         const data = await getJobStatus(jobId);
         setJob(data);
 
-        if (data.status === 'COMPLETED') {
+        if (data.status === JOB_STATUS.COMPLETED) {
           if (data.result) {
             setCalories(data.result.calories || 0);
             setProtein(data.result.protein || 0);
@@ -57,7 +57,7 @@ export default function Refinement() {
             setComments(data.result.description || '');
           }
           clearInterval(pollInterval);
-        } else if (data.status === 'FAILED') {
+        } else if (data.status === JOB_STATUS.FAILED) {
           setError('AI analysis failed. Please try again with a clearer photo.');
           clearInterval(pollInterval);
         }
@@ -155,7 +155,7 @@ export default function Refinement() {
     return <ErrorView error={error} />;
   }
 
-  if (!job || job.status === 'PENDING') {
+  if (!job || job.status === JOB_STATUS.PENDING || job.status === JOB_STATUS.PROCESSING) {
     return <LoadingView />;
   }
 

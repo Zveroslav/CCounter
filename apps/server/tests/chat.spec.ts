@@ -21,9 +21,12 @@ const gemini = require('../src/services/gemini');
 dayjs.extend(utc);
 dayjs.extend(timezone);
 
+const { errorHandler } = require('../src/middleware/error');
+
 const app = express();
 app.use(express.json());
 app.use('/api/chat', chatRoutes);
+app.use(errorHandler);
 
 describe('Chat API', () => {
   let userId: string;
@@ -32,14 +35,10 @@ describe('Chat API', () => {
   beforeEach(async () => {
     jest.clearAllMocks();
     
-    await prisma.meal.deleteMany();
-    await prisma.dailySummary.deleteMany();
-    await prisma.weeklySummary.deleteMany();
-    await prisma.monthlySummary.deleteMany();
-    await prisma.user.deleteMany();
-
-    const user = await prisma.user.create({
-      data: {
+    const user = await prisma.user.upsert({
+      where: { email: 'chat@example.com' },
+      update: {},
+      create: {
         email: 'chat@example.com',
         timezone: 'UTC',
       },
@@ -59,7 +58,8 @@ describe('Chat API', () => {
       .send({ period: 'Day' });
 
     expect(res.status).toBe(400);
-    expect(res.body.error).toBe('message and period are required');
+    expect(res.body.status).toBe('error');
+    expect(res.body.message).toBe('Validation error');
   });
 
   it.skip('should construct prompt with day context and return AI response', async () => {

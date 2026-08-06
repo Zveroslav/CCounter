@@ -3,7 +3,7 @@ import dayjs from 'dayjs';
 import utc from 'dayjs/plugin/utc';
 import timezone from 'dayjs/plugin/timezone';
 import { prisma } from '../prisma';
-import { getDailyFeedback } from '../services/gemini';
+import { getDailyFeedback, getWeeklyFeedback, getMonthlyFeedback } from '../services/gemini';
 
 dayjs.extend(utc);
 dayjs.extend(timezone);
@@ -89,6 +89,29 @@ export const runAggregations = async () => {
           });
 
           const weeklyCalories = dailySummaries.reduce((sum, ds) => sum + ds.totalCalories, 0);
+          const weeklyProtein = dailySummaries.reduce((sum, ds) => sum + ds.totalProtein, 0);
+          const weeklyCarbs = dailySummaries.reduce((sum, ds) => sum + ds.totalCarbs, 0);
+          const weeklyFat = dailySummaries.reduce((sum, ds) => sum + ds.totalFat, 0);
+
+          const weightLogs = await prisma.weightLog.findMany({
+            where: { userId: user.id, date: { gte: startOfWeek, lte: endOfDay } },
+            orderBy: { date: 'asc' }
+          });
+
+          let avgWeight: number | null = null;
+          let startWeight: number | undefined;
+          let endWeight: number | undefined;
+
+          if (weightLogs.length > 0) {
+            startWeight = weightLogs[0].weight;
+            endWeight = weightLogs[weightLogs.length - 1].weight;
+            avgWeight = weightLogs.reduce((sum, w) => sum + w.weight, 0) / weightLogs.length;
+          }
+
+          let comment = null;
+          if (dailySummaries.length > 0) {
+            comment = await getWeeklyFeedback(weeklyCalories / 7, weeklyProtein / 7, weeklyCarbs / 7, weeklyFat / 7, startWeight, endWeight);
+          }
 
           await prisma.weeklySummary.upsert({
             where: {
@@ -99,12 +122,16 @@ export const runAggregations = async () => {
             },
             update: {
               totalCalories: weeklyCalories,
+              avgWeight,
+              comment,
             },
             create: {
               userId: user.id,
               startDate: startOfWeek,
               endDate: endOfDay,
               totalCalories: weeklyCalories,
+              avgWeight,
+              comment,
             },
           });
         }
@@ -124,6 +151,30 @@ export const runAggregations = async () => {
           });
 
           const monthlyCalories = dailySummaries.reduce((sum, ds) => sum + ds.totalCalories, 0);
+          const monthlyProtein = dailySummaries.reduce((sum, ds) => sum + ds.totalProtein, 0);
+          const monthlyCarbs = dailySummaries.reduce((sum, ds) => sum + ds.totalCarbs, 0);
+          const monthlyFat = dailySummaries.reduce((sum, ds) => sum + ds.totalFat, 0);
+          const daysInMonth = prevDay.endOf('month').date();
+
+          const weightLogs = await prisma.weightLog.findMany({
+            where: { userId: user.id, date: { gte: startOfMonth, lte: endOfDay } },
+            orderBy: { date: 'asc' }
+          });
+
+          let avgWeight: number | null = null;
+          let startWeight: number | undefined;
+          let endWeight: number | undefined;
+
+          if (weightLogs.length > 0) {
+            startWeight = weightLogs[0].weight;
+            endWeight = weightLogs[weightLogs.length - 1].weight;
+            avgWeight = weightLogs.reduce((sum, w) => sum + w.weight, 0) / weightLogs.length;
+          }
+
+          let comment = null;
+          if (dailySummaries.length > 0) {
+            comment = await getMonthlyFeedback(monthlyCalories / daysInMonth, monthlyProtein / daysInMonth, monthlyCarbs / daysInMonth, monthlyFat / daysInMonth, startWeight, endWeight);
+          }
 
           await prisma.monthlySummary.upsert({
             where: {
@@ -135,12 +186,16 @@ export const runAggregations = async () => {
             },
             update: {
               totalCalories: monthlyCalories,
+              avgWeight,
+              comment,
             },
             create: {
               userId: user.id,
               month: prevDay.month() + 1,
               year: prevDay.year(),
               totalCalories: monthlyCalories,
+              avgWeight,
+              comment,
             },
           });
         }

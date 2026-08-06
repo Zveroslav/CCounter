@@ -44,7 +44,7 @@ export default function DayView({ data, profile, activeAlert, setActiveAlert }: 
           </button>
           {activeAlert === 'Calories' && (
             <div className="absolute top-full right-0 mt-1 w-40 bg-gray-800 text-white text-xs p-2 rounded-lg shadow-lg z-20 text-left pointer-events-none">
-              You are over your calorie limit by {Math.round(((totalCaloriesToday - targetCalories) / targetCalories) * 100)}%.
+              You are over your calorie limit by {Math.round(totalCaloriesToday - targetCalories)} kcal.
               <div className="absolute -top-1 right-2 w-2 h-2 bg-gray-800 transform rotate-45"></div>
             </div>
           )}
@@ -80,12 +80,11 @@ export default function DayView({ data, profile, activeAlert, setActiveAlert }: 
       <div className="space-y-4">
         <div className="grid grid-cols-3 gap-2">
           {[
-            { label: 'Protein', grams: totalProteinToday, target: targetP, color: 'text-indigo-600', bg: 'bg-indigo-50' },
-            { label: 'Fat', grams: totalFatToday, target: targetF, color: 'text-amber-600', bg: 'bg-amber-50' },
-            { label: 'Carbs', grams: totalCarbsToday, target: targetC, color: 'text-emerald-600', bg: 'bg-emerald-50' },
+            { label: 'Protein', grams: totalProteinToday, target: targetP, actualPct: pPercent, targetPct: profile?.targetProteinPct ?? 30, color: 'text-indigo-600', bg: 'bg-indigo-50' },
+            { label: 'Fat', grams: totalFatToday, target: targetF, actualPct: fPercent, targetPct: profile?.targetFatPct ?? 30, color: 'text-amber-600', bg: 'bg-amber-50' },
+            { label: 'Carbs', grams: totalCarbsToday, target: targetC, actualPct: cPercent, targetPct: profile?.targetCarbsPct ?? 40, color: 'text-emerald-600', bg: 'bg-emerald-50' },
           ].map(m => {
             const isOverLimit = m.target > 0 && Math.round(m.grams) > m.target;
-            const overagePct = m.target > 0 ? Math.round(((m.grams - m.target) / m.target) * 100) : 0;
             
             return (
               <div key={m.label} className={`${m.bg} rounded-2xl p-3 flex flex-col gap-1 items-center text-center relative`}>
@@ -102,7 +101,7 @@ export default function DayView({ data, profile, activeAlert, setActiveAlert }: 
                     </button>
                     {activeAlert === m.label && (
                       <div className="absolute top-full right-0 mt-1 w-32 bg-gray-800 text-white text-xs p-2 rounded-lg shadow-lg z-20 text-left pointer-events-none">
-                        You are over your {m.label.toLowerCase()} limit by {overagePct}%.
+                        You are over your {m.label.toLowerCase()} limit by {Math.round(m.grams - m.target)}g.
                         <div className="absolute -top-1 right-1 w-2 h-2 bg-gray-800 transform rotate-45"></div>
                       </div>
                     )}
@@ -129,6 +128,21 @@ export default function DayView({ data, profile, activeAlert, setActiveAlert }: 
           </div>
         </div>
       </div>
+      
+      {/* AI Comment */}
+      {data?.periodSummary?.comment && (
+        <div className="mt-4 p-4 bg-gradient-to-br from-indigo-50 to-purple-50 rounded-xl border border-indigo-100/50 relative">
+          <div className="flex items-center space-x-2 mb-2">
+            <div className="w-5 h-5 rounded-full bg-indigo-100 flex items-center justify-center">
+              <span className="text-indigo-600 text-xs font-bold">AI</span>
+            </div>
+            <h3 className="text-sm font-bold text-indigo-900">Insights</h3>
+          </div>
+          <p className="text-sm text-indigo-800 leading-relaxed whitespace-pre-wrap">
+            {data.periodSummary.comment.replace(/^AI:\s*/i, '')}
+          </p>
+        </div>
+      )}
     </div>
   );
 }

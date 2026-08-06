@@ -1,6 +1,6 @@
 import { useState, useEffect, useMemo, useRef } from 'react';
 import { Loader2, ChevronLeft, ChevronRight, Bot } from 'lucide-react';
-import { format, startOfWeek, endOfWeek, subDays, addDays, subWeeks, addWeeks, subMonths, addMonths, eachDayOfInterval, isSameDay, parseISO } from 'date-fns';
+import { format, startOfWeek, endOfWeek, subDays, addDays, subWeeks, addWeeks, subMonths, addMonths, eachDayOfInterval, eachWeekOfInterval, isSameDay, parseISO } from 'date-fns';
 import { getJournalData, saveUserNote, type JournalData, type Meal } from '../../api/journal';
 import { getProfile, type UserProfile } from '../../api/user';
 
@@ -125,9 +125,8 @@ export default function Dashboard() {
           carbs: c,
           proteinCal: Math.round(p * 4),
           fatCal: Math.round(f * 9),
-          carbsCal: Math.round(c * 4),
+          carbsCal: isEmpty ? profile.targetCalories : Math.round(c * 4),
           macroTotal: p + f + c,
-          visualCalories: isEmpty ? profile.targetCalories : summary!.totalCalories,
           isEmpty,
         };
       });
@@ -136,25 +135,40 @@ export default function Dashboard() {
     if (period === 'month') {
       const start = parseISO(data.startDate);
       const end = parseISO(data.endDate);
-      const days = eachDayOfInterval({ start, end });
+      const weeks = eachWeekOfInterval({ start, end }, { weekStartsOn: 1 });
 
-      return days.map(day => {
-        const summary = data.dailySummaries.find(s => isSameDay(parseISO(s.date), day));
-        const isEmpty = !summary || summary.totalCalories === 0;
-        const p = isEmpty ? 0 : summary!.totalProtein;
-        const f = isEmpty ? 0 : summary!.totalFat;
-        const c = isEmpty ? 0 : summary!.totalCarbs;
+      return weeks.map((weekStart, idx) => {
+        const weekEnd = endOfWeek(weekStart, { weekStartsOn: 1 });
+        
+        const summaries = data.dailySummaries.filter(s => {
+          const date = parseISO(s.date);
+          return date >= weekStart && date <= weekEnd;
+        });
+
+        const totalCalories = summaries.reduce((sum, s) => sum + s.totalCalories, 0);
+        const totalProtein = summaries.reduce((sum, s) => sum + s.totalProtein, 0);
+        const totalFat = summaries.reduce((sum, s) => sum + s.totalFat, 0);
+        const totalCarbs = summaries.reduce((sum, s) => sum + s.totalCarbs, 0);
+        
+        const isEmpty = summaries.length === 0 || totalCalories === 0;
+        
+        const daysWithData = summaries.filter(s => s.totalCalories > 0).length || 1; 
+        
+        const p = isEmpty ? 0 : Math.round(totalProtein / daysWithData);
+        const f = isEmpty ? 0 : Math.round(totalFat / daysWithData);
+        const c = isEmpty ? 0 : Math.round(totalCarbs / daysWithData);
+        const avgCalories = isEmpty ? 0 : Math.round(totalCalories / daysWithData);
+
         return {
-          name: format(day, 'd'),
-          calories: summary ? summary.totalCalories : 0,
+          name: `W${idx + 1}`,
+          calories: avgCalories,
           protein: p,
           fat: f,
           carbs: c,
           proteinCal: Math.round(p * 4),
           fatCal: Math.round(f * 9),
-          carbsCal: Math.round(c * 4),
+          carbsCal: isEmpty ? profile.targetCalories : Math.round(c * 4),
           macroTotal: p + f + c,
-          visualCalories: isEmpty ? profile.targetCalories : summary!.totalCalories,
           isEmpty,
         };
       });
@@ -255,6 +269,7 @@ export default function Dashboard() {
 
             {period === 'month' && (
               <MonthView 
+                data={data}
                 chartData={chartData} 
                 profile={profile} 
               />

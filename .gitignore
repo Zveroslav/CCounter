@@ -14,3 +14,4 @@ apps/server/uploads/
 t.png
 
 apps/uploads/
+.board/history/

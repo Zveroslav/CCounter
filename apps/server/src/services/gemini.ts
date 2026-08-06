@@ -1,5 +1,6 @@
 import * as cp from 'child_process';
 import { z } from 'zod';
+import { AppError } from '../middleware/error';
 
 const CLI_TIMEOUT_MS = 60_000; // 60 seconds
 
@@ -38,6 +39,7 @@ export const MealRecognitionSchema = z.object({
   protein: z.number().transform(Math.round),
   carbs: z.number().transform(Math.round),
   fat: z.number().transform(Math.round),
+  health_warnings: z.string().optional(),
 });
 
 export type MealRecognitionResult = z.infer<typeof MealRecognitionSchema>;
@@ -47,22 +49,16 @@ export type MealRecognitionResult = z.infer<typeof MealRecognitionSchema>;
 // ---------------------------------------------------------------------------
 
 export const recognizeMealFromImage = async (imagePath: string, customPrompt?: string): Promise<MealRecognitionResult> => {
-  const template = process.env.CLI_COMMAND_TEMPLATE;
-  const basePrompt = process.env.AI_SYSTEM_PROMPT || 'Analyze this meal';
+  const agyBin = process.env.AGY_PATH || 'agy';
+  const basePrompt = "Analyze the image. If it's a prepared meal, identify it and estimate the calories, protein, carbs, and fat. If it's food packaging, read the nutritional value from the label. Return only JSON with the following fields: title (short name of the meal/product), description (detailed description and any relevant health warnings or notes), calories (number), protein (number), carbs (number), fat (number).";
   const prompt = customPrompt
     ? `${basePrompt}. Additional user instructions/clarification: ${customPrompt}`
     : basePrompt;
 
-  if (!template) {
-    throw new Error('CLI_COMMAND_TEMPLATE is not set in environment variables');
-  }
-
   const escapedPrompt = prompt.replace(/'/g, "'\\''");
   const escapedImagePath = imagePath.replace(/'/g, "'\\''");
 
-  const command = template
-    .replace('{{PROMPT}}', () => escapedPrompt)
-    .replace('{{IMAGE_PATH}}', () => escapedImagePath);
+  const command = `${agyBin} --dangerously-skip-permissions --print '${escapedPrompt} The image is located at: ${escapedImagePath}' --output-format json`;
 
   try {
     console.log('[agy] recognizeMeal: executing...');
@@ -92,15 +88,8 @@ export const getDailyFeedback = async (
   carbs: number,
   fat: number,
 ): Promise<string> => {
-  const promptTemplate = process.env.AI_DAILY_PROMPT;
-  if (!promptTemplate) return 'Daily summary recorded.';
-
   const agyBin = process.env.AGY_PATH || 'agy';
-  const prompt = promptTemplate
-    .replace('{{CALORIES}}', calories.toString())
-    .replace('{{PROTEIN}}', protein.toString())
-    .replace('{{CARBS}}', carbs.toString())
-    .replace('{{FAT}}', fat.toString());
+  const prompt = `Generate a short but useful comment based on the daily data: Calories: ${Math.round(calories)}, Protein: ${Math.round(protein)}g, Fat: ${Math.round(fat)}g, Carbs: ${Math.round(carbs)}g. Take into account the macronutrient balance. Give a small piece of advice. Return only a text response (without JSON).`;
 
   const command = `${agyBin} --dangerously-skip-permissions --print '${prompt}' --output-format json`;
 
@@ -115,6 +104,74 @@ export const getDailyFeedback = async (
     return jsonString;
   } catch (error) {
     console.error('[agy] getDailyFeedback failed:', error);
+    return `Could not generate feedback: ${(error as Error).message}`;
+  }
+};
+
+export const getWeeklyFeedback = async (
+  calories: number,
+  protein: number,
+  carbs: number,
+  fat: number,
+  startWeight?: number,
+  endWeight?: number
+): Promise<string> => {
+  const agyBin = process.env.AGY_PATH || 'agy';
+  
+  let weightText = '';
+  if (startWeight !== undefined && endWeight !== undefined) {
+    const diff = endWeight - startWeight;
+    if (diff > 0) weightText = `Weight changed from ${startWeight} to ${endWeight} (+${diff.toFixed(1)}kg).`;
+    else if (diff < 0) weightText = `Weight changed from ${startWeight} to ${endWeight} (${diff.toFixed(1)}kg).`;
+    else weightText = `Weight didn't change (${startWeight}kg).`;
+  }
+
+  const prompt = `Generate a maximally short and concise weekly comment based on the data: Calories: ${Math.round(calories)}, Protein: ${Math.round(protein)}g, Fat: ${Math.round(fat)}g, Carbs: ${Math.round(carbs)}g. ${weightText} Give a short evaluation of the week. Return only a text response (without JSON).`;
+  const command = `${agyBin} --dangerously-skip-permissions --print '${prompt}' --output-format json`;
+
+  try {
+    const { stdout } = await execWithTimeout(command);
+    let jsonString = stdout.trim();
+    try {
+      const agyParsed = JSON.parse(jsonString);
+      if (agyParsed?.response) return agyParsed.response;
+    } catch (_) { }
+    return jsonString;
+  } catch (error) {
+    return `Could not generate feedback: ${(error as Error).message}`;
+  }
+};
+
+export const getMonthlyFeedback = async (
+  calories: number,
+  protein: number,
+  carbs: number,
+  fat: number,
+  startWeight?: number,
+  endWeight?: number
+): Promise<string> => {
+  const agyBin = process.env.AGY_PATH || 'agy';
+  
+  let weightText = '';
+  if (startWeight !== undefined && endWeight !== undefined) {
+    const diff = endWeight - startWeight;
+    if (diff > 0) weightText = `Weight changed from ${startWeight} to ${endWeight} (+${diff.toFixed(1)}kg).`;
+    else if (diff < 0) weightText = `Weight changed from ${startWeight} to ${endWeight} (${diff.toFixed(1)}kg).`;
+    else weightText = `Weight didn't change (${startWeight}kg).`;
+  }
+
+  const prompt = `Generate a maximally short and concise monthly comment based on the data: Calories: ${Math.round(calories)}, Protein: ${Math.round(protein)}g, Fat: ${Math.round(fat)}g, Carbs: ${Math.round(carbs)}g. ${weightText} Give a short evaluation of the month. Return only a text response (without JSON).`;
+  const command = `${agyBin} --dangerously-skip-permissions --print '${prompt}' --output-format json`;
+
+  try {
+    const { stdout } = await execWithTimeout(command);
+    let jsonString = stdout.trim();
+    try {
+      const agyParsed = JSON.parse(jsonString);
+      if (agyParsed?.response) return agyParsed.response;
+    } catch (_) { }
+    return jsonString;
+  } catch (error) {
     return `Could not generate feedback: ${(error as Error).message}`;
   }
 };
@@ -135,6 +192,6 @@ export const chatWithNutritionist = async (prompt: string): Promise<string> => {
     return jsonString;
   } catch (error) {
     console.error('[agy] chatWithNutritionist failed:', error);
-    throw error; // re-throw — HTTP handler вернёт 500 с реальным сообщением
+    throw new AppError('AI service is temporarily unavailable or returned an error. Please try again.', 503);
   }
 };
